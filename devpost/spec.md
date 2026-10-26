@@ -132,6 +132,7 @@ PRD ref: `prd.md > The Core Journey`.
   3. After about 1 minute, the amber card slides over the music app.
   4. Swipe it away, or tap it to open Insight.
   5. Show the History row, Patterns, Trends, and the System Log.
+- **Public repository:** https://github.com/Lanceky/Smart-Senses (pushed by the learner at submission).
 - **Deployment:** none. Submission is the demo video plus the public GitHub repo. Attaching a debug APK to a GitHub release is possible later but isn't planned.
 
 ## Look and Feel
