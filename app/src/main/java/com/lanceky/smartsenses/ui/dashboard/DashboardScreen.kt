@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -19,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -29,9 +31,16 @@ import com.lanceky.smartsenses.SmartSensesApp
 import com.lanceky.smartsenses.data.Event
 import com.lanceky.smartsenses.data.EventKind
 import com.lanceky.smartsenses.data.Settings
+import com.lanceky.smartsenses.monitor.EarsStatus
 import com.lanceky.smartsenses.monitor.Live
 import com.lanceky.smartsenses.monitor.LiveStatus
 import com.lanceky.smartsenses.monitor.MonitoringService
+import com.lanceky.smartsenses.monitor.toConfig
+import com.lanceky.smartsenses.permissions.Permissions
+import com.lanceky.smartsenses.permissions.rememberPermissionStatus
+import com.lanceky.smartsenses.rules.EarsConfig
+import com.lanceky.smartsenses.rules.MINUTE_MS
+import com.lanceky.smartsenses.rules.Rule
 import com.lanceky.smartsenses.rules.Severity
 import com.lanceky.smartsenses.ui.components.CapsLabel
 import com.lanceky.smartsenses.ui.components.ConsoleButton
@@ -40,9 +49,11 @@ import com.lanceky.smartsenses.ui.components.ConsoleText
 import com.lanceky.smartsenses.ui.components.StatusDot
 import com.lanceky.smartsenses.ui.components.VolumeBar
 import com.lanceky.smartsenses.ui.components.color
+import com.lanceky.smartsenses.ui.components.glyph
 import com.lanceky.smartsenses.ui.theme.Amber
 import com.lanceky.smartsenses.ui.theme.Border
 import com.lanceky.smartsenses.ui.theme.Neon
+import com.lanceky.smartsenses.ui.theme.Red
 import com.lanceky.smartsenses.ui.theme.TextDim
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -55,6 +66,7 @@ fun DashboardScreen(settings: Settings) {
     val app = context.applicationContext as SmartSensesApp
     val live by LiveStatus.state.collectAsStateWithLifecycle()
     val events by remember { app.db.events().observeRecent(8) }.collectAsStateWithLifecycle(emptyList())
+    val permissions = rememberPermissionStatus()
     val scope = rememberCoroutineScope()
     val start: () -> Unit = {
         scope.launch {
@@ -68,6 +80,16 @@ fun DashboardScreen(settings: Settings) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         TopBar(settings, live, start)
+        if (!permissions.overlay) {
+            Notice("WARNING CARD: UNAVAILABLE · Appear on top is off") {
+                context.startActivity(Permissions.overlaySettingsIntent(context))
+            }
+        }
+        if (!permissions.notifications) {
+            Notice("NOTIFICATIONS: MISSING · monitoring runs without its notice") {
+                context.startActivity(Permissions.notificationSettingsIntent(context))
+            }
+        }
         EarsCard(settings, live)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ComingLater("EYES", "screen brightness", Modifier.weight(1f))
@@ -80,30 +102,58 @@ fun DashboardScreen(settings: Settings) {
 @Composable
 private fun TopBar(settings: Settings, live: Live, onStart: () -> Unit) {
     val active = settings.monitoringEnabled && live.running
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("◉", color = Neon, fontSize = 26.sp)
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text("SMART-SENSES", color = Neon, fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontFamily = FontFamily.Monospace)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                when {
-                    active -> { StatusDot(Neon, pulsing = true); Spacer(Modifier.width(6.dp)); CapsLabel("MONITORING: ACTIVE", color = Neon) }
-                    settings.monitoringEnabled -> { StatusDot(Amber, pulsing = false); Spacer(Modifier.width(6.dp)); CapsLabel("MONITORING: STOPPED", color = Amber) }
-                    else -> { StatusDot(TextDim, pulsing = false); Spacer(Modifier.width(6.dp)); CapsLabel("MONITORING: OFF") }
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("◉", color = Neon, fontSize = 26.sp)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("SMART-SENSES", color = Neon, fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontFamily = FontFamily.Monospace)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    when {
+                        active -> { StatusDot(Neon, pulsing = true); Spacer(Modifier.width(6.dp)); CapsLabel("MONITORING: ACTIVE", color = Neon) }
+                        settings.monitoringEnabled -> { StatusDot(Amber, pulsing = false); Spacer(Modifier.width(6.dp)); CapsLabel("MONITORING: STOPPED", color = Amber) }
+                        else -> { StatusDot(TextDim, pulsing = false); Spacer(Modifier.width(6.dp)); CapsLabel("MONITORING: OFF") }
+                    }
                 }
             }
+            when {
+                active -> Unit
+                settings.monitoringEnabled -> ConsoleButton("restart", onStart, color = Amber)
+                else -> ConsoleButton("start", onStart, filled = true)
+            }
         }
-        when {
-            active -> Unit
-            settings.monitoringEnabled -> ConsoleButton("restart", onStart, color = Amber)
-            else -> ConsoleButton("start", onStart, filled = true)
+        val snoozed = settings.snoozeUntil > System.currentTimeMillis()
+        if (settings.demoMode || snoozed) {
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (settings.demoMode) Chip("DEMO MODE", Amber)
+                if (snoozed) Chip("SNOOZED UNTIL ${formatClock(settings.snoozeUntil, short = true)}", TextDim)
+            }
         }
+    }
+}
+
+@Composable
+private fun Chip(text: String, color: Color) {
+    CapsLabel(text, Modifier.border(1.dp, color, RoundedCornerShape(3.dp)).padding(horizontal = 8.dp, vertical = 3.dp), color = color, bold = true)
+}
+
+@Composable
+private fun Notice(text: String, onFix: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().border(1.dp, Amber.copy(alpha = 0.6f), RoundedCornerShape(4.dp)).padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CapsLabel("▲ $text", Modifier.weight(1f), color = Amber)
+        Spacer(Modifier.width(8.dp))
+        ConsoleButton("fix", onFix, color = Amber)
     }
 }
 
 @Composable
 private fun EarsCard(settings: Settings, live: Live) {
     val running = settings.monitoringEnabled && live.running
+    val config = settings.toConfig()
     ConsolePanel(title = "EARS", accent = Neon, glow = Neon, trailing = { CapsLabel("headphone volume") }) {
         val output = live.output
         when {
@@ -113,18 +163,23 @@ private fun EarsCard(settings: Settings, live: Live) {
         }
         Spacer(Modifier.height(6.dp))
         val high = running && live.volumePercent >= settings.thresholdPercent
+        val volumeColor = when {
+            !high -> Neon
+            live.volumePercent >= EarsConfig.VERY_HIGH_PERCENT -> Red
+            else -> Amber
+        }
         Row(verticalAlignment = Alignment.Bottom) {
             CapsLabel("VOLUME", Modifier.padding(bottom = 8.dp))
             Spacer(Modifier.width(10.dp))
             Text(
                 if (running) "${live.volumePercent}%" else "—",
-                color = if (high) Amber else Neon,
+                color = volumeColor,
                 fontSize = 34.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
             )
         }
-        VolumeBar(if (running) live.volumePercent else 0, settings.thresholdPercent, if (high) Amber else Neon)
+        VolumeBar(if (running) live.volumePercent else 0, settings.thresholdPercent, volumeColor)
         ConsoleText("threshold ${settings.thresholdPercent}%", color = TextDim, size = 11.sp)
         Spacer(Modifier.height(6.dp))
         when {
@@ -132,9 +187,26 @@ private fun EarsCard(settings: Settings, live: Live) {
             live.playing -> CapsLabel("PLAYING", color = Neon)
             else -> CapsLabel("PAUSED: timers hold")
         }
-        Spacer(Modifier.height(6.dp))
-        if (running) CapsLabel("● STATUS: NORMAL", color = Neon, bold = true)
-        else ConsoleText("> monitoring is off: no readings_", color = TextDim)
+        if (running) {
+            CapsLabel("TODAY ABOVE ${settings.thresholdPercent}%: ${live.todayHighMs / MINUTE_MS} min")
+        }
+        Spacer(Modifier.height(8.dp))
+        when {
+            !running -> ConsoleText("> monitoring is off: no readings_", color = TextDim)
+            live.status == EarsStatus.NORMAL -> CapsLabel("● STATUS: NORMAL", color = Neon, bold = true)
+            else -> {
+                CapsLabel(
+                    "▲ HIGH VOLUME: ${mmss(live.continuousHighMs)} / ${mmss(config.continuousMs)}",
+                    color = Amber, bold = true,
+                )
+                if (live.status == EarsStatus.VERY_HIGH) {
+                    CapsLabel(
+                        "■ VERY HIGH: ${mmss(live.veryHighMs)} / ${mmss(EarsConfig.VERY_HIGH_MINUTES * MINUTE_MS)}",
+                        color = Red, bold = true,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -153,15 +225,29 @@ private fun SystemLog(events: List<Event>) {
         if (events.isEmpty()) ConsoleText("> no events yet_", color = TextDim, size = 12.sp)
         events.forEach { e ->
             val severity = e.severity?.let { runCatching { Severity.valueOf(it) }.getOrNull() }
+            val isWarning = e.kind == EventKind.WARNING && severity != null
             ConsoleText(
-                "> ${formatClock(e.time)}  ${e.message}${if (e.demoMode) " [DEMO]" else ""}",
-                color = if (e.kind == EventKind.WARNING && severity != null) severity.color() else TextDim,
+                "> ${formatClock(e.time)}  ${if (isWarning) warningLine(e, severity!!) else e.message}${if (e.demoMode) " [DEMO]" else ""}",
+                color = if (isWarning) severity!!.color() else TextDim,
                 size = 12.sp,
             )
         }
     }
 }
 
-private val clock = DateTimeFormatter.ofPattern("HH:mm:ss")
+private fun warningLine(e: Event, severity: Severity): String {
+    val minutes = (e.durationMs ?: 0) / MINUTE_MS
+    return if (e.rule == Rule.DAILY.name) "WARNING ${severity.glyph()} EARS $minutes min loud today"
+    else "WARNING ${severity.glyph()} EARS ${e.volumePercent}% for $minutes min"
+}
 
-fun formatClock(epochMs: Long): String = Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).format(clock)
+fun mmss(ms: Long): String {
+    val total = ms / 1000
+    return "%02d:%02d".format(total / 60, total % 60)
+}
+
+private val clock = DateTimeFormatter.ofPattern("HH:mm:ss")
+private val shortClock = DateTimeFormatter.ofPattern("HH:mm")
+
+fun formatClock(epochMs: Long, short: Boolean = false): String =
+    Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).format(if (short) shortClock else clock)

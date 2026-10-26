@@ -9,7 +9,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
 
 ## Slices
 
-- [ ] **1. The dashboard shows your real headphone status and volume, live, and keeps monitoring after you leave the app**
+- [x] **1. The dashboard shows your real headphone status and volume, live, and keeps monitoring after you leave the app**
   Becomes usable: Smart-Senses installs on the Galaxy A03 and opens on the black console dashboard. Tap `START` next to `MONITORING: OFF` to start monitoring.
   - The Ears card shows, updating within a second:
     - whether headphones are connected, and which type;
@@ -53,7 +53,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   Does the console look the way you pictured it?
   Commit: `Live Ears console: foreground monitor, audio reader, Room log, dashboard`
 
-- [ ] **2. Loud listening slides the amber warning card over another app (Demo mode: 1 minute), and it's recorded**
+- [x] **2. Loud listening slides the amber warning card over another app (Demo mode: 1 minute), and it's recorded**
   Becomes usable: turn on Demo mode in Settings, play music through headphones at 80% or more, and switch to the music app.
   - **The card:** after 1 minute of playback, the amber card slides down over the music app: "EARS: Volume high for 1 min. Consider lowering it." It stays about 5 seconds and slides away. Swiping it up dismisses it.
   - **The log:** the warning is recorded in the System Log.
@@ -100,7 +100,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   Learner check:
   1. In Settings, turn on Demo mode.
   2. Play music through headphones at 80% or more (step 12 of 15), switch to the music app, and wait about a minute. The amber card should slide down over it and leave after about 5 seconds.
-  3. Trigger it again (lower the volume, raise it, wait a minute) and swipe it up to dismiss.
+  3. Trigger it again: in Settings, turn Demo mode off and on (this resets the cooldown), go back to the music app, and wait a minute. Swipe the card up to dismiss it.
   4. Lower the volume and check that the System Log says `volume back under threshold`.
 
   What did you notice, and what would you change?
@@ -276,3 +276,5 @@ Activity mode: [not started]
 
 - **Kept the `agent/` folder** instead of deleting it before the first commit, as `spec.md > File Structure` planned. The build found it isn't unused: it's the skill pack's own copy of the six skills for another agent, created by `npx skills add` alongside `.agents/` and `.claude/`. It was committed with the rest of the skill pack.
 - **Lifecycle 2.10.0 instead of 2.11.0** (`spec.md > Stack`). The first build failed AAR metadata checks: `lifecycle-runtime-compose` 2.11.0 requires compileSdk 37, which AGP 9.1 and the installed SDK don't support. 2.10.0 has the same APIs used here and builds with SDK 36.
+- **Slice 2 learner check, step 3** (re-trigger the card). The plan said lower the volume, raise it, and wait a minute, but the 10-minute per-rule cooldown (`prd.md > Warning Rules`, unchanged in Demo mode) blocks a second card that soon. The step now turns Demo mode off and on, which resets cooldowns and today's card count as the PRD already specifies.
+- **Slice 2 mechanical verification without headphones.** None were connected, so steps 5–8 ran on a temporary build that reported wired headphones and playback (never committed). The card appeared 60 s after the timer started, auto-hid, dismissed on swipe up, and the `WARNING` and `volume back under threshold` lines were logged. Real headphones are covered by the learner check.

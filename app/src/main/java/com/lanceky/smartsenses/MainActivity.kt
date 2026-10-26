@@ -24,6 +24,11 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private val app get() = application as SmartSensesApp
 
+    companion object {
+        /** Set when a warning card is tapped. Insight for that warning arrives in a later step; for now it opens the app. */
+        const val EXTRA_WARNING_ID = "warningId"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),

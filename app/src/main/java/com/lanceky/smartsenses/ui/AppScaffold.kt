@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.lanceky.smartsenses.data.Settings
 import com.lanceky.smartsenses.ui.components.ConsoleText
 import com.lanceky.smartsenses.ui.dashboard.DashboardScreen
+import com.lanceky.smartsenses.ui.settings.SettingsScreen
 import com.lanceky.smartsenses.ui.theme.Black
 import com.lanceky.smartsenses.ui.theme.Border
 import com.lanceky.smartsenses.ui.theme.Neon
@@ -51,7 +52,7 @@ fun AppScaffold(settings: Settings) {
                 Tab.DASHBOARD -> DashboardScreen(settings)
                 Tab.TRENDS -> PendingScreen("TRENDS")
                 Tab.HISTORY -> PendingScreen("HISTORY")
-                Tab.SETTINGS -> PendingScreen("SETTINGS")
+                Tab.SETTINGS -> SettingsScreen(settings)
             }
         }
     }

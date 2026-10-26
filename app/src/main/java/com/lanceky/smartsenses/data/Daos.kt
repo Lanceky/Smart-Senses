@@ -41,4 +41,10 @@ interface EventDao {
 
     @Query("SELECT * FROM events ORDER BY time DESC, id DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<Event>>
+
+    @Query("SELECT COUNT(*) FROM events WHERE kind = 'WARNING' AND time >= :since")
+    suspend fun warningCountSince(since: Long): Int
+
+    @Query("SELECT MAX(time) FROM events WHERE kind = 'WARNING' AND rule = :rule AND time >= :since")
+    suspend fun lastWarningTime(rule: String, since: Long): Long?
 }
