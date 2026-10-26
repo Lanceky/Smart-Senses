@@ -48,6 +48,9 @@ interface EventDao {
     @Query("SELECT * FROM events WHERE kind = 'WARNING' ORDER BY time DESC, id DESC")
     fun observeWarnings(): Flow<List<Event>>
 
+    @Query("SELECT * FROM events WHERE id = :id")
+    fun observe(id: Long): Flow<Event?>
+
     @Query("SELECT COUNT(*) FROM events WHERE kind = 'WARNING' AND time >= :since")
     suspend fun warningCountSince(since: Long): Int
 

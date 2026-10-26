@@ -44,7 +44,7 @@ Ears only, end to end:
 
 ## Later
 Once the ears flow works reliably outside the app, "reuse that foundation for brightness and temperature."
-- **Eyes extras:** brightness and room-light charts in Trends, Eyes patterns over several days, and an Eyes insight page.
+- **Eyes extras:** brightness and room-light charts in Trends, Eyes patterns over several days, and Eyes-specific advice. (Tapping an Eyes card already opens the shared Insight page with its brightness and room light.)
 - **Device — temperature caution** (battery temperature, thermal status): "less central to the core hearing-and-vision use case."
 - Full trend charts and more advanced insights, such as tapping the card to see why it appeared.
 - Screen-time breaks, text-size suggestions, personalized recommendations.

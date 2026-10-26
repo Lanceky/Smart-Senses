@@ -1,5 +1,6 @@
 package com.lanceky.smartsenses
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -9,6 +10,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -26,8 +29,21 @@ class MainActivity : ComponentActivity() {
     private val app get() = application as SmartSensesApp
 
     companion object {
-        /** Set when a warning card is tapped. Insight for that warning arrives in a later step; for now it opens the app. */
+        /** Set when a warning card is tapped: the app opens that warning's Insight. */
         const val EXTRA_WARNING_ID = "warningId"
+    }
+
+    private var openWarningId by mutableStateOf<Long?>(null)
+
+    private fun readWarningId(intent: Intent?) {
+        val id = intent?.getLongExtra(EXTRA_WARNING_ID, -1L) ?: -1L
+        if (id > 0) openWarningId = id
+        intent?.removeExtra(EXTRA_WARNING_ID)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        readWarningId(intent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,12 +52,17 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) readWarningId(intent)
         setContent {
             SmartSensesTheme {
                 // Wait on a black screen until settings load, so nothing flashes.
                 val settings by app.settingsStore.settings.collectAsStateWithLifecycle<Settings?>(initialValue = null)
                 Box(Modifier.fillMaxSize().background(Black)) {
-                    settings?.let { if (it.onboardingDone) AppScaffold(it) else OnboardingFlow() }
+                    settings?.let {
+                        if (it.onboardingDone) {
+                            AppScaffold(it, openWarningId, onOpenWarning = { id -> openWarningId = id }, onCloseInsight = { openWarningId = null })
+                        } else OnboardingFlow()
+                    }
                 }
             }
         }

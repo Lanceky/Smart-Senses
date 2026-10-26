@@ -33,6 +33,7 @@ import com.lanceky.smartsenses.data.Settings
 import com.lanceky.smartsenses.ui.components.ConsoleText
 import com.lanceky.smartsenses.ui.dashboard.DashboardScreen
 import com.lanceky.smartsenses.ui.history.HistoryScreen
+import com.lanceky.smartsenses.ui.insight.InsightScreen
 import com.lanceky.smartsenses.ui.settings.SettingsScreen
 import com.lanceky.smartsenses.ui.theme.Black
 import com.lanceky.smartsenses.ui.theme.Border
@@ -42,18 +43,19 @@ import com.lanceky.smartsenses.ui.theme.TextDim
 enum class Tab { DASHBOARD, TRENDS, HISTORY, SETTINGS }
 
 @Composable
-fun AppScaffold(settings: Settings) {
+fun AppScaffold(settings: Settings, openWarningId: Long?, onOpenWarning: (Long) -> Unit, onCloseInsight: () -> Unit) {
     var tab by rememberSaveable { mutableStateOf(Tab.DASHBOARD) }
     Scaffold(
         containerColor = Black,
-        bottomBar = { BottomNav(tab) { tab = it } },
+        bottomBar = { BottomNav(tab) { onCloseInsight(); tab = it } },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            when (tab) {
-                Tab.DASHBOARD -> DashboardScreen(settings)
-                Tab.TRENDS -> PendingScreen("TRENDS")
-                Tab.HISTORY -> HistoryScreen()
-                Tab.SETTINGS -> SettingsScreen(settings)
+            when {
+                openWarningId != null -> InsightScreen(openWarningId, settings, onCloseInsight)
+                tab == Tab.DASHBOARD -> DashboardScreen(settings)
+                tab == Tab.TRENDS -> PendingScreen("TRENDS")
+                tab == Tab.HISTORY -> HistoryScreen(onOpenWarning)
+                else -> SettingsScreen(settings)
             }
         }
     }

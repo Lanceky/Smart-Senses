@@ -620,6 +620,9 @@ File: `ui/insight/InsightScreen.kt`. Opened by tapping the card or a History war
   - output type;
   - a `DEMO` tag if it applies.
 - **Why:** "Volume stayed at or above 80% for 15 minutes while audio played through headphones."
+- **Eyes warnings** use the same screen: brightness %, room light in lux, how long, and time. Why: "Screen brightness stayed at or above 70% while the room was darker than 20 lux, for 10 min." Note: "Brightness % and room light are phone readings, not an eye-health measurement."
+- **Demo note:** for the two rules Demo mode shortens (continuous Ears, Eyes), a line says the wait was shortened to 1 minute.
+- **Routing:** `MainActivity` keeps the open warning id in state (read in `onCreate` and `onNewIntent`, then removed from the intent). History warning rows set the same id. A bottom-nav tap or Back closes Insight.
 - **Honest note:** "Volume % is an estimate of exposure, not a decibel measurement; headphones differ in loudness."
 - **Snooze 1 hour:** sets `snoozeUntil = now + 1 h` and logs `SNOOZED`. When snoozed, the button becomes `SNOOZED UNTIL hh:mm`.
 

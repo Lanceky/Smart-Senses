@@ -99,6 +99,7 @@ Source: `scope.md > The Core Loop`, `scope.md > Inspiration & Identity`.
 ### Insight and Snooze
 Source: `scope.md > Later` (tap to see why), brought into this build by the learner during the PRD.
 - [ ] Insight shows why the warning fired: rule, volume %, how long, time, and output type.
+- [ ] An Eyes warning's Insight shows brightness %, room light in lux, how long, and time, with a note that these are phone readings, not an eye-health measurement.
 - [ ] It includes a one-line honest note that volume % is an estimate, not a decibel measurement.
 - [ ] **Snooze 1 hour** suppresses cards for an hour. The dashboard shows that snooze is active.
 
@@ -201,7 +202,7 @@ Order follows your scope priority: "make the first milestone a complete, working
 3. **Added during the build:** Eyes, a bright screen in a dim room (your request after the Ears flow worked).
 
 ## Deferred From the POC
-- **Eyes extras:** Eyes patterns over several days (such as a late-night habit) and an Eyes insight page (`scope.md > Later`). The Eyes card, rule and History rows are built.
+- **Eyes extras:** Eyes patterns over several days (such as a late-night habit) and Eyes-specific advice (`scope.md > Later`). The Eyes card, rule, History rows and its Insight (the shared page) are built.
 - **Device/Heat (temperature, thermal status)**, including the charging-heat pattern (`scope.md > Later`).
 - **Brightness and temperature charts in Trends**, which arrive with those signals.
 - **Data controls such as clearing history** (`scope.md > Later`).

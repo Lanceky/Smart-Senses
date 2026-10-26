@@ -195,7 +195,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   3. Lower the brightness and check that the dashboard's System Log says why the timer reset.
   Commit: `Eyes: warn about a bright screen in a dim room`
 
-- [ ] **6. Tap the card to see why it fired, and snooze cards for an hour**
+- [x] **6. Tap the card to see why it fired, and snooze cards for an hour**
   Becomes usable: tapping the card, or a History warning row, opens Insight. It shows:
   - severity, rule, volume %, how long, time, output, and a `DEMO` tag;
   - a plain "why";
@@ -316,3 +316,7 @@ Activity mode: [not started]
   - **Measured on the A03:** the brightness slider moves linearly with the stored value, and the light sensor read 2–5 lux in your room.
   - **Data kept:** `events` moved to Room version 2 with a migration, so your recorded history survived.
   - **Docs updated:** `scope.md`, `prd.md` (new Eyes section) and `spec.md` (new `Eyes Reader and Rule` component, Data Model, Settings keys).
+- **Slice 6: Insight works for Eyes too.** The shared Insight page shows an Eyes warning's brightness and room light, so `scope.md` and `prd.md` now defer only Eyes-specific advice. Verified on the phone:
+  - `am start --el warningId` opened the Eyes and red Ears warnings;
+  - a History row tap opened Insight, and Back returned to History;
+  - `Snooze 1 hour` showed `SNOOZED UNTIL 22:47` on the button and the dashboard, and logged `SNOOZED`.
