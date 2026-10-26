@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart-Senses: App Map</title>
+<style>
+  :root { --bg:#000; --panel:#06140a; --border:#1f5c33; --neon:#39ff14; --text:#c9f7d3; --dim:#6fa27c; --amber:#ffb300; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; }
+  main { max-width: 860px; margin: 0 auto; padding: 28px 18px 60px; }
+  h1 { color:var(--neon); font-size:22px; margin:0 0 4px; letter-spacing:.04em; }
+  h2 { color:var(--neon); font-size:15px; letter-spacing:.12em; text-transform:uppercase; margin:0 0 10px; }
+  p { margin: 0 0 10px; }
+  .sub { color:var(--dim); margin-bottom:22px; }
+  section { border:1px solid var(--border); background:var(--panel); border-radius:6px; padding:16px 18px; margin:0 0 18px; }
+  code { color:var(--neon); background:#0a1f11; padding:1px 5px; border-radius:3px; word-break: break-word; }
+  ul, ol { margin: 0 0 6px; padding-left: 22px; }
+  li { margin: 0 0 8px; }
+  .dim { color:var(--dim); }
+  .amber { color:var(--amber); }
+  table { border-collapse: collapse; width:100%; }
+  th, td { text-align:left; vertical-align:top; padding:6px 8px; border-bottom:1px solid var(--border); }
+  th { color:var(--dim); font-weight:normal; text-transform:uppercase; font-size:12px; letter-spacing:.1em; }
+  details { border-top:1px solid var(--border); padding-top:8px; margin-top:8px; }
+  summary { cursor:pointer; color:var(--neon); }
+  summary:focus-visible, a:focus-visible { outline:2px solid var(--amber); outline-offset:2px; }
+  a { color:var(--neon); }
+  svg { width:100%; height:auto; display:block; }
+  .tag { display:inline-block; border:1px solid var(--amber); color:var(--amber); padding:0 6px; border-radius:3px; font-size:12px; letter-spacing:.08em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>&gt; SMART-SENSES / APP MAP</h1>
+  <p class="sub">A take-home guide to where things live. A snapshot of source commit <code>3fd0316</code>; the code can drift after this.</p>
+
+  <section aria-labelledby="what">
+    <h2 id="what">What the app is</h2>
+    <p>An Android app that watches two everyday senses in the background. <b>EARS</b> tracks headphone volume, and <b>EYES</b> tracks screen brightness against room light. When a habit runs too long, a terminal-style card drops over whatever app you're using. You can also commit to a max volume and brightness that the app holds for you. Everything stays on the phone.</p>
+    <table>
+      <thead><tr><th>Piece</th><th>Where</th><th>Job</th></tr></thead>
+      <tbody>
+        <tr><td>Readers</td><td><code>monitor/AudioReader.kt</code>, <code>monitor/EyesReader.kt</code></td><td>Ask Android: headphones? volume? playing? brightness? room light?</td></tr>
+        <tr><td>Rules</td><td><code>rules/</code></td><td>Plain Kotlin that decides <i>when</i> to warn or nudge. No Android code, so it's unit-tested.</td></tr>
+        <tr><td>Monitoring service</td><td><code>monitor/MonitoringService.kt</code></td><td>The 1-second loop in the background: read, decide, save, show.</td></tr>
+        <tr><td>Warning card</td><td><code>overlay/</code></td><td>The card that drops over other apps.</td></tr>
+        <tr><td>Storage</td><td><code>data/</code></td><td>Room database (readings, sessions, events) and DataStore settings.</td></tr>
+        <tr><td>Screens</td><td><code>ui/</code></td><td>Dashboard, Trends, History, Insight, Settings, Onboarding.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section aria-labelledby="flow">
+    <h2 id="flow">One action, end to end</h2>
+    <p><b>Action:</b> headphones in, music loud (80% or more) for a minute in Demo mode, while you're in another app. <b>Result:</b> the amber EARS card drops from the status bar.</p>
+    <svg viewBox="0 0 820 250" role="img" aria-labelledby="svgt svgd">
+      <title id="svgt">How a loud minute becomes a warning card</title>
+      <desc id="svgd">AudioReader.read feeds EarsRuleEngine.onTick every second inside MonitoringService. When the rule fires, MonitoringService.onWarning saves a WARNING event in Room and calls WarningCardOverlay.show, which draws the card over the current app.</desc>
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#39ff14"/></marker></defs>
+      <rect x="4" y="10" width="812" height="150" rx="6" fill="none" stroke="#1f5c33" stroke-dasharray="4 4"/>
+      <text x="16" y="30" fill="#6fa27c" font-size="12" font-family="monospace">MonitoringService · every 1 s</text>
+      <rect x="20" y="50" width="220" height="80" rx="5" fill="#0a1f11" stroke="#39ff14"/>
+      <text x="130" y="80" fill="#39ff14" font-size="14" text-anchor="middle" font-family="monospace">1 · AudioReader</text>
+      <text x="130" y="102" fill="#c9f7d3" font-size="12" text-anchor="middle" font-family="monospace">read(): headphones,</text>
+      <text x="130" y="118" fill="#c9f7d3" font-size="12" text-anchor="middle" font-family="monospace">volume %, playing</text>
+      <rect x="300" y="50" width="220" height="80" rx="5" fill="#0a1f11" stroke="#39ff14"/>
+      <text x="410" y="80" fill="#39ff14" font-size="14" text-anchor="middle" font-family="monospace">2 · EarsRuleEngine</text>
+      <text x="410" y="102" fill="#c9f7d3" font-size="12" text-anchor="middle" font-family="monospace">onTick(): timers,</text>
+      <text x="410" y="118" fill="#c9f7d3" font-size="12" text-anchor="middle" font-family="monospace">cooldown, daily cap</text>
+      <rect x="580" y="50" width="220" height="80" rx="5" fill="#0a1f11" stroke="#39ff14"/>
+      <text x="690" y="80" fill="#39ff14" font-size="14" text-anchor="middle" font-family="monospace">3 · onWarning()</text>
+      <text x="690" y="102" fill="#c9f7d3" font-size="12" text-anchor="middle" font-family="monospace">save event, then</text>
+      <text x="690" y="118" fill="#c9f7d3" font-size="12" text-anchor="middle" font-family="monospace">show the card</text>
+      <line x1="240" y1="90" x2="296" y2="90" stroke="#39ff14" stroke-width="2" marker-end="url(#ar)"/>
+      <line x1="520" y1="90" x2="576" y2="90" stroke="#39ff14" stroke-width="2" marker-end="url(#ar)"/>
+      <line x1="640" y1="130" x2="560" y2="186" stroke="#39ff14" stroke-width="2" marker-end="url(#ar)"/>
+      <line x1="740" y1="130" x2="740" y2="186" stroke="#ffb300" stroke-width="2" marker-end="url(#ar)"/>
+      <rect x="380" y="190" width="200" height="50" rx="5" fill="#0a1f11" stroke="#1f5c33"/>
+      <text x="480" y="212" fill="#c9f7d3" font-size="12" text-anchor="middle" font-family="monospace">Room: events (WARNING)</text>
+      <text x="480" y="230" fill="#6fa27c" font-size="11" text-anchor="middle" font-family="monospace">History · Insight · Log</text>
+      <rect x="630" y="190" width="186" height="50" rx="5" fill="#1a1200" stroke="#ffb300"/>
+      <text x="723" y="212" fill="#ffb300" font-size="12" text-anchor="middle" font-family="monospace">▲ EARS card drops</text>
+      <text x="723" y="230" fill="#ffb300" font-size="11" text-anchor="middle" font-family="monospace">over your music app</text>
+    </svg>
+    <ol class="dim">
+      <li>The reader samples headphones, volume and playback.</li>
+      <li>The rule engine counts loud, playing time and decides a warning is due.</li>
+      <li>The service saves it in Room and shows the card through the overlay.</li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="route">
+    <h2 id="route">Route: three stops <span class="tag">REFERENCE ROUTE</span></h2>
+    <p class="dim">Open the project in Android Studio, use <i>Find in Files</i> (Ctrl+Shift+F) with each search anchor, and read only around it. Paths are relative to <code>app/src/main/java/com/lanceky/smartsenses/</code>.</p>
+    <ol>
+      <li><b>The input.</b> <code>monitor/AudioReader.kt</code>, search <code>fun read()</code>.
+        It asks <code>AudioManager</code> whether headphones are the output, what the media volume is as a %, and whether music is actually playing. That's why paused music doesn't count.</li>
+      <li><b>The decision.</b> <code>rules/EarsRuleEngine.kt</code>, search <code>fun onTick(</code>.
+        It keeps the loud-right-now and loud-today timers, then checks the cooldown, the 3-a-day cap, snooze and the screen before returning a <code>Warning</code>. The message text comes from <code>rules/EarsModels.kt</code>. Its tests are in <code>app/src/test/…/EarsRuleEngineTest.kt</code>.</li>
+      <li><b>The result.</b> <code>monitor/MonitoringService.kt</code>, search <code>private suspend fun onWarning(</code>.
+        It inserts a <code>WARNING</code> event, which History, Insight and the System Log read, then calls <code>WarningCardOverlay.show(…)</code>. The card itself, with its bouncy drop, is <code>overlay/WarningCard.kt</code>; search <code>DropSpring</code>.</li>
+    </ol>
+    <details>
+      <summary>The same pattern for Limits (volume snap-back)</summary>
+      <p><code>MonitoringService.kt</code> → <code>private fun enforceLimits()</code> calls <code>AudioReader.capVolume(…)</code>, which writes the volume back down to the allowed step from <code>Limits.maxVolumeIndex(…)</code> in <code>rules/Limits.kt</code>. Then <code>onLimitHeld(…)</code> logs <code>LIMIT_HELD</code> and shows a <code>LimitNudge</code> card with a line from <code>Limits.line(…)</code>.</p>
+    </details>
+  </section>
+
+  <section aria-labelledby="change">
+    <h2 id="change">To change this, start here</h2>
+    <ul>
+      <li><b>Warning wording:</b> <code>rules/EarsModels.kt</code>, search <code>"EARS: Volume high</code>. Eyes wording is in <code>rules/EyesModels.kt</code>.</li>
+      <li><b>Default thresholds:</b> <code>data/SettingsStore.kt</code> (<code>thresholdPercent: Int = 80</code>). Fixed rules such as <code>COOLDOWN_MINUTES</code> and <code>DAILY_CAP</code> are in <code>rules/EarsModels.kt</code>.</li>
+      <li><b>The card's bounce and time on screen:</b> <code>overlay/WarningCard.kt</code>, <code>DropSpring</code> (damping 0.5, stiffness 120) and <code>VISIBLE_MS</code>.</li>
+      <li><b>The witty limit lines:</b> <code>rules/Limits.kt</code>, <code>volumeLines</code> and <code>brightnessLines</code>. The 15-second gap is <code>NUDGE_GAP_MS</code>.</li>
+      <li><b>Colors:</b> <code>ui/theme/Color.kt</code> (<code>Neon</code>, <code>Amber</code>).</li>
+      <li><b>Trends ranges:</b> <code>ui/trends/TrendsScreen.kt</code>, with the grouping in <code>rules/TrendBuckets.kt</code>.</li>
+    </ul>
+    <p class="dim">After a change in <code>rules/</code>, run the tests first. They take seconds and need no phone.</p>
+  </section>
+
+  <section aria-labelledby="practice">
+    <h2 id="practice">A practice to reuse</h2>
+    <p><b>Keep decisions in plain code, and test the whole input range rather than one example.</b> For the volume limit, the app has to pick the highest volume step that stays at or under the limit. The first formula looked right, but <code>LimitsTest</code> checks <i>every</i> limit from 0 to 100 against 15 volume steps, and it failed: some limits stopped a step too low. The fix, an exact search using the reader's own rounding, went in before the commit. The record is under <code>devpost/checklist.md &gt; Revisions</code> (Limits).</p>
+    <p>On another project: when an agent writes a small calculation, ask for a test that sweeps every realistic input. It's cheap, and it catches what "it works on my example" misses.</p>
+  </section>
+
+  <section aria-labelledby="run">
+    <h2 id="run">Run it again</h2>
+    <ul>
+      <li>Phone connected with USB debugging: <code>./gradlew installDebug</code>. Or open the folder in Android Studio and press <b>Run</b>.</li>
+      <li>Rule tests (no phone needed): <code>./gradlew testDebugUnitTest</code>, with 42 tests.</li>
+      <li>Quick demo: Settings → <b>Demo mode</b> on, headphones in, music at 80%+, switch apps, wait about a minute. Turn Limits off first, because a 60% limit keeps the volume under the 80% line.</li>
+    </ul>
+    <p class="dim">Plans: <code>devpost/scope.md</code> → <code>prd.md</code> → <code>spec.md</code> → <code>checklist.md</code>.</p>
+  </section>
+</main>
+</body>
+</html>

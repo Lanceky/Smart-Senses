@@ -343,8 +343,8 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
 - [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
 - [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: [not started]
-Route and stops: [not started]
+Activity and evidence: [pending] Map prepared from commit `3fd0316`. With the deadline close, a brief evidence-based recap is proposed: `LimitsTest` sweeps every limit from 0 to 100, which caught the volume-step bug in slice 10.
+Route and stops: Reference route in the map (`AudioReader.read` → `EarsRuleEngine.onTick` → `MonitoringService.onWarning`). Not toured yet.
 Edit outcome: [not started]
 Reflection: [not started]
 Activity mode: [not started]
