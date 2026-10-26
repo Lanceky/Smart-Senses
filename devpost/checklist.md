@@ -253,7 +253,8 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored: after slice 2. You try the card over a music app in Demo mode, while feedback can still change the card's look, wording, timing, and the remaining steps.
+- [x] Early usable behavior explored: after slice 2. You try the card over a music app in Demo mode, while feedback can still change the card's look, wording, timing, and the remaining steps.
+  - Done with real wired headphones: the card fired at 93% after 1 minute. Feedback: the card should drop vertically from the status bar with a buoyant bounce. Changed to a spring drop; a frame-by-frame screen recording confirmed the overshoot and bob.
 - [ ] Final kick-the-tires exploration and feedback completed: after slice 7, the full core journey from a fresh install.
 
 ## Final Review
@@ -278,3 +279,4 @@ Activity mode: [not started]
 - **Lifecycle 2.10.0 instead of 2.11.0** (`spec.md > Stack`). The first build failed AAR metadata checks: `lifecycle-runtime-compose` 2.11.0 requires compileSdk 37, which AGP 9.1 and the installed SDK don't support. 2.10.0 has the same APIs used here and builds with SDK 36.
 - **Slice 2 learner check, step 3** (re-trigger the card). The plan said lower the volume, raise it, and wait a minute, but the 10-minute per-rule cooldown (`prd.md > Warning Rules`, unchanged in Demo mode) blocks a second card that soon. The step now turns Demo mode off and on, which resets cooldowns and today's card count as the PRD already specifies.
 - **Slice 2 mechanical verification without headphones.** None were connected, so steps 5–8 ran on a temporary build that reported wired headphones and playback (never committed). The card appeared 60 s after the timer started, auto-hid, dismissed on swipe up, and the `WARNING` and `volume back under threshold` lines were logged. Real headphones are covered by the learner check.
+- **Warning card motion** (learner feedback at the slice 2 checkpoint). The card used to slide and fade in. It now drops straight down from under the status bar on a bouncy spring: it overshoots about 20 dp, bobs back and settles in under a second. The exit is still a quick slide up. Updated `spec.md > Warning Card Overlay` and the `prd.md > The Warning Card` criterion.

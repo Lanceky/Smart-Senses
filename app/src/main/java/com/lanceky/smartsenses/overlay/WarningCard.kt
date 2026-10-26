@@ -2,8 +2,8 @@ package com.lanceky.smartsenses.overlay
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -55,7 +55,13 @@ import kotlin.math.roundToInt
 private const val VISIBLE_MS = 5_000L
 private val CardShape = RoundedCornerShape(4.dp)
 
-/** The floating card: slides in, stays about 5 s, slides away. Swipe up to dismiss; tap for details. */
+// A buoyant drop: low damping overshoots below the resting spot, bobs back up and settles in about a second.
+private val DropSpring = spring<IntOffset>(dampingRatio = 0.5f, stiffness = 120f)
+
+// Extra window height while dropping, so the overshoot isn't clipped by the window's bottom edge.
+private val OvershootRoom = 28.dp
+
+/** The floating card: drops from the status bar, stays about 5 s, slides back up. Swipe up to dismiss; tap for details. */
 @Composable
 fun WarningCard(warning: Warning, onTap: () -> Unit, onGone: () -> Unit) {
     val visible = remember { MutableTransitionState(false).apply { targetState = true } }
@@ -73,10 +79,12 @@ fun WarningCard(warning: Warning, onTap: () -> Unit, onGone: () -> Unit) {
         onGone()
     }
 
+    val dropping = visible.targetState && !visible.isIdle
     AnimatedVisibility(
         visibleState = visible,
-        enter = slideInVertically { -it } + fadeIn(),
-        exit = slideOutVertically { -it } + fadeOut(),
+        modifier = Modifier.padding(bottom = if (dropping) OvershootRoom else 0.dp),
+        enter = slideInVertically(DropSpring) { -it },
+        exit = slideOutVertically(tween(260)) { -it },
     ) {
         Row(
             Modifier

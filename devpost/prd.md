@@ -89,7 +89,7 @@ Source: `scope.md > The Core Loop`, `scope.md > Open for the PRD`. These are pro
 
 ### The Warning Card
 Source: `scope.md > The Core Loop`, `scope.md > Inspiration & Identity`.
-- [ ] When a rule triggers, a slim card slides down from just below the status bar, over whatever app is open.
+- [ ] When a rule triggers, a slim card drops down from just below the status bar with a buoyant bounce, over whatever app is open.
 - [ ] Amber card text: "EARS: Volume high for 15 min. Consider lowering it." The minutes shown match the actual rule, so Demo mode says 1 min.
 - [ ] The card is visible for about 5 seconds and then slides away by itself.
 - [ ] Swiping the card up dismisses it immediately. Dismissing doesn't stop monitoring and doesn't mark the episode as resolved.

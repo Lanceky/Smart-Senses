@@ -395,7 +395,7 @@ Files: `overlay/WarningCardOverlay.kt` (the window), `overlay/WarningCard.kt` (t
 - is set with `setViewTreeLifecycleOwner` and `setViewTreeSavedStateRegistryOwner`.
 
 **Behavior.**
-- **Show:** `AnimatedVisibility` slides the card in from the top.
+- **Show:** `AnimatedVisibility` drops the card straight down from under the status bar on a bouncy spring (damping 0.5, stiffness 120): it overshoots, bobs back up and settles in about a second, with no fade. The window keeps 28 dp of extra height while the card is dropping, so the overshoot isn't clipped.
 - **Auto-hide:** after 5 s, `LaunchedEffect` slides it out and then removes the view.
 - **Swipe up:** a vertical drag of more than about 40 dp upward dismisses it immediately.
 - **Tap:** removes the card and starts `MainActivity` with `FLAG_ACTIVITY_NEW_TASK` and `warningId`. This is allowed because the app holds Appear on top and its window is visible (see the docs link).
