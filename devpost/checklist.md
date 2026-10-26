@@ -331,23 +331,25 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
 
 - [x] Early usable behavior explored: after slice 2. You try the card over a music app in Demo mode, while feedback can still change the card's look, wording, timing, and the remaining steps.
   - Done with real wired headphones: the card fired at 93% after 1 minute. Feedback: the card should drop vertically from the status bar with a buoyant bounce. Changed to a spring drop; a frame-by-frame screen recording confirmed the overshoot and bob.
-- [ ] Final kick-the-tires exploration and feedback completed: after slice 10, the full core journey from a fresh install.
+- [x] Final kick-the-tires exploration and feedback completed: after slice 10, the full core journey from a fresh install.
+  - Done on your phone's existing install rather than a fresh one, because of the deadline. You tried each feature as it landed: the Ears card over a music app, Eyes, Trends, and Limits. Your own brightness push at 22:48 was held at 60%. Feedback was resolved along the way: the card's vertical spring drop, the Demo mode reset, and paused music not counting.
 
 ## Final Review
 
-- [ ] Final review complete — feedback resolved and learner confirms ready to ship
+- [x] Final review complete — feedback resolved and learner confirms ready to ship
+  - No open feedback. You confirmed "ready to ship" at 23:01. The build and all 42 tests pass, and the phone runs the committed build.
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
-- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
-- [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
+- [x] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
+- [x] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
+- [x] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: [pending] Map prepared from commit `3fd0316`. With the deadline close, a brief evidence-based recap is proposed: `LimitsTest` sweeps every limit from 0 to 100, which caught the volume-step bug in slice 10.
-Route and stops: Reference route in the map (`AudioReader.read` → `EarsRuleEngine.onTick` → `MonitoringService.onWarning`). Not toured yet.
-Edit outcome: [not started]
-Reflection: [not started]
-Activity mode: [not started]
+Activity and evidence: A brief evidence-based recap, not a hands-on tour, because of the deadline. `LimitsTest` sweeps every limit from 0 to 100 against 15 volume steps, and it caught the volume-step bug in slice 10 before the commit (see Revisions, Limits). The map's "A practice to reuse" section records it.
+Route and stops: A reference route in the map (`AudioReader.read` → `EarsRuleEngine.onTick` → `MonitoringService.onWarning`). It wasn't toured interactively.
+Edit outcome: Not applicable. There was no tour, so no edit was made.
+Reflection: Offered ("what would you do differently next time you start with an agent?"). You went straight to shipping, so it's treated as declined.
+Activity mode: A recap, in fast mode. The map is `devpost/app-map.html`, built from commit `3fd0316`. Its 25 anchors were checked against the source, and it was rendered in headless Firefox. You got its path and the reopen command (`xdg-open devpost/app-map.html`); it wasn't opened on your screen.
 
 ## Revisions
 
