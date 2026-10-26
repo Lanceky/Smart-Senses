@@ -16,6 +16,7 @@ import com.lanceky.smartsenses.data.Settings
 import com.lanceky.smartsenses.monitor.LiveStatus
 import com.lanceky.smartsenses.monitor.MonitoringService
 import com.lanceky.smartsenses.ui.AppScaffold
+import com.lanceky.smartsenses.ui.onboarding.OnboardingFlow
 import com.lanceky.smartsenses.ui.theme.Black
 import com.lanceky.smartsenses.ui.theme.SmartSensesTheme
 import kotlinx.coroutines.flow.first
@@ -40,7 +41,7 @@ class MainActivity : ComponentActivity() {
                 // Wait on a black screen until settings load, so nothing flashes.
                 val settings by app.settingsStore.settings.collectAsStateWithLifecycle<Settings?>(initialValue = null)
                 Box(Modifier.fillMaxSize().background(Black)) {
-                    settings?.let { AppScaffold(it) }
+                    settings?.let { if (it.onboardingDone) AppScaffold(it) else OnboardingFlow() }
                 }
             }
         }

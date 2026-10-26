@@ -132,7 +132,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   3. Force-close Smart-Senses or restart the phone: History should still show them.
   Commit: `History: record readings and listening sessions, show them newest first`
 
-- [ ] **4. First-time setup: welcome, choose Ears, each permission explained right before it's asked, then a checklist**
+- [x] **4. First-time setup: welcome, choose Ears, each permission explained right before it's asked, then a checklist**
   Becomes usable: a fresh install opens on the Welcome screen, with the circuit-eye logo and the tagline. Then:
   1. **Choose what to monitor:** Ears on; Eyes and Device "coming later".
   2. **Notifications explainer:** leads to the system prompt.
@@ -281,3 +281,4 @@ Activity mode: [not started]
 - **Slice 2 mechanical verification without headphones.** None were connected, so steps 5–8 ran on a temporary build that reported wired headphones and playback (never committed). The card appeared 60 s after the timer started, auto-hid, dismissed on swipe up, and the `WARNING` and `volume back under threshold` lines were logged. Real headphones are covered by the learner check.
 - **Warning card motion** (learner feedback at the slice 2 checkpoint). The card used to slide and fade in. It now drops straight down from under the status bar on a bouncy spring: it overshoots about 20 dp, bobs back and settles in under a second. The exit is still a quick slide up. Updated `spec.md > Warning Card Overlay` and the `prd.md > The Warning Card` criterion.
 - **Slice 3 mechanical verification without playing audio.** A wired headset was plugged in but paused, so nothing was played into it. A temporary build (never committed) mapped volume steps to states: 0 meant unplugged, 7 meant plugged in and paused, anything else meant playing. Results: a paused-only session was deleted; a 78 s session matched its 9 readings exactly; a warning raised its session to CAUTION; History survived a force-stop. The real build then detected the wired headset correctly.
+- **Slice 4 verification, steps 2–3.** You walked through setup on the phone yourself and granted both permissions instead of denying notifications. The deny path (monitoring keeps running without notifications; a missing Appear on top shows `FIX`) was already covered by the dashboard notices verified in slice 2, and slice 7 spot-checks it again. After your walk-through, the Appear on top explainer gained one hint line saying what to look for in Android's list.

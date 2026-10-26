@@ -1,5 +1,6 @@
 package com.lanceky.smartsenses.ui.dashboard
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,11 +24,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lanceky.smartsenses.R
 import com.lanceky.smartsenses.SmartSensesApp
 import com.lanceky.smartsenses.data.Event
 import com.lanceky.smartsenses.data.EventKind
@@ -104,7 +108,7 @@ private fun TopBar(settings: Settings, live: Live, onStart: () -> Unit) {
     val active = settings.monitoringEnabled && live.running
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("◉", color = Neon, fontSize = 26.sp)
+            Image(painterResource(R.drawable.ic_logo), contentDescription = "Smart-Senses logo", modifier = Modifier.size(40.dp))
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text("SMART-SENSES", color = Neon, fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontFamily = FontFamily.Monospace)
