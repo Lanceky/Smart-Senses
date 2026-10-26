@@ -30,10 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lanceky.smartsenses.data.Settings
-import com.lanceky.smartsenses.ui.components.ConsoleText
 import com.lanceky.smartsenses.ui.dashboard.DashboardScreen
 import com.lanceky.smartsenses.ui.history.HistoryScreen
 import com.lanceky.smartsenses.ui.insight.InsightScreen
+import com.lanceky.smartsenses.ui.trends.TrendsScreen
 import com.lanceky.smartsenses.ui.settings.SettingsScreen
 import com.lanceky.smartsenses.ui.theme.Black
 import com.lanceky.smartsenses.ui.theme.Border
@@ -53,7 +53,7 @@ fun AppScaffold(settings: Settings, openWarningId: Long?, onOpenWarning: (Long) 
             when {
                 openWarningId != null -> InsightScreen(openWarningId, settings, onCloseInsight)
                 tab == Tab.DASHBOARD -> DashboardScreen(settings)
-                tab == Tab.TRENDS -> PendingScreen("TRENDS")
+                tab == Tab.TRENDS -> TrendsScreen(settings)
                 tab == Tab.HISTORY -> HistoryScreen(onOpenWarning)
                 else -> SettingsScreen(settings)
             }
@@ -87,12 +87,5 @@ private fun BottomNav(selected: Tab, onSelect: (Tab) -> Unit) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun PendingScreen(name: String) {
-    Box(Modifier.fillMaxSize().padding(16.dp)) {
-        ConsoleText("> $name: arrives in a later build step_", color = TextDim)
     }
 }

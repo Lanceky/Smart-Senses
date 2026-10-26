@@ -221,7 +221,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   2. Tap `Snooze 1 hour`, then check the dashboard shows `SNOOZED UNTIL`.
   Commit: `Insight and snooze: tap a warning to see why it fired`
 
-- [ ] **7. Patterns and Trends from your own recorded listening**
+- [x] **7. Patterns and Trends from your own recorded listening**
   Becomes usable:
   - **Patterns panel** on the dashboard:
     - today's summary, e.g. "Today: 3 high-volume stretches, 24 min at or above 80%";
@@ -320,3 +320,7 @@ Activity mode: [not started]
   - `am start --el warningId` opened the Eyes and red Ears warnings;
   - a History row tap opened Insight, and Back returned to History;
   - `Snooze 1 hour` showed `SNOOZED UNTIL 22:47` on the button and the dashboard, and logged `SNOOZED`.
+- **Slice 7 verified on the phone against the pulled database:**
+  - Patterns: "Today: 8 high-volume stretches, 32 min at or above 80%" and "Not enough data yet (1 of 4 listening days)" match the `readings` and `events` rows.
+  - Trends Day: 32 min listened at a 98% average, the same as the database. Week shows Monday's point and a 31-minute bar.
+  - `PatternsTest` (6 tests) passes alongside the Ears and Eyes tests.

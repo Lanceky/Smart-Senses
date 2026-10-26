@@ -61,8 +61,12 @@ import com.lanceky.smartsenses.ui.theme.Border
 import com.lanceky.smartsenses.ui.theme.Neon
 import com.lanceky.smartsenses.ui.theme.Red
 import com.lanceky.smartsenses.ui.theme.TextDim
+import com.lanceky.smartsenses.ui.theme.TextMain
+import com.lanceky.smartsenses.rules.Patterns
+import com.lanceky.smartsenses.rules.VolumeTrend
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -99,6 +103,7 @@ fun DashboardScreen(settings: Settings) {
         EarsCard(settings, live)
         EyesCard(settings, live) { scope.launch { app.settingsStore.setEyesEnabled(true) } }
         ComingLater("DEVICE", "temperature", Modifier.fillMaxWidth())
+        PatternsPanel(app, settings)
         SystemLog(events)
     }
 }
@@ -273,6 +278,28 @@ private fun ComingLater(title: String, what: String, modifier: Modifier = Modifi
         CapsLabel("$title · COMING LATER")
         Spacer(Modifier.height(2.dp))
         ConsoleText(what, color = TextDim.copy(alpha = 0.7f), size = 12.sp)
+    }
+}
+
+/** Rule-based patterns from recorded readings only. */
+@Composable
+private fun PatternsPanel(app: SmartSensesApp, settings: Settings) {
+    val today = remember { LocalDate.now() }
+    val startOfToday = remember { today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() }
+    val stats by remember { app.db.readings().observeDailyStats(today.toEpochDay() - 30) }.collectAsStateWithLifecycle(null)
+    val stretches by remember { app.db.events().countKindSince(EventKind.HIGH_VOLUME_STARTED, startOfToday) }.collectAsStateWithLifecycle(0)
+    val days = stats ?: return
+    val highToday = days.firstOrNull { it.epochDay == today.toEpochDay() }?.highMs ?: 0L
+    val trend = Patterns.volumeTrend(days)
+    ConsolePanel(title = "PATTERNS") {
+        ConsoleText("> ${Patterns.todayText(stretches, highToday, settings.thresholdPercent)}", color = TextMain, size = 12.sp)
+        Spacer(Modifier.height(4.dp))
+        val up = trend is VolumeTrend.Up
+        ConsoleText(
+            "${if (up) "▲" else ">"} ${Patterns.trendText(trend)}",
+            color = if (up) Amber else TextDim,
+            size = 12.sp,
+        )
     }
 }
 

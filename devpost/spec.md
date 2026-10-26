@@ -459,7 +459,7 @@ Files: `data/Entities.kt`, `data/Daos.kt`, `data/AppDatabase.kt`. Tables are in 
 - **`ReadingDao`**
   - `insert`
   - `observeDay(day)`
-  - `observeDailyStats(fromDay)`: per day, the play-time-weighted average volume, `SUM(highMs)` and `SUM(playingMs)`
+  - `observeDailyStats(fromDay)`: per day, the play-time-weighted average volume, `SUM(highMs)`, `SUM(playingMs)` and the reading count, returned as the plain-Kotlin `rules.DayStat`
   - `highMsOnDay(day)`
   - `lastTimeForSession(id)`
 - **`SessionDao`**
@@ -470,7 +470,7 @@ Files: `data/Entities.kt`, `data/Daos.kt`, `data/AppDatabase.kt`. Tables are in 
   - `insert` (returns its id)
   - `observeRecent(limit)`
   - `observeWarnings()`
-  - `get(id)`
+  - `observe(id)`: a Flow, so Insight updates if the row arrives late
   - `warningsSince(from)`
   - `lastWarningTime(rule, from)`
   - `countKindSince(kind, from)`: a Flow
@@ -605,6 +605,7 @@ Files: `ui/trends/TrendsScreen.kt`, `ui/trends/EarsChart.kt` (Compose `Canvas`, 
   - The last 7 days: each day's average volume as a point-line on the same axes, with the threshold line.
   - Below it: small bars of minutes above the threshold per day, labeled by weekday.
 - **Empty:** fewer than 2 readings in the window shows `Not enough data yet.`
+- **Built:** a pause of more than 25 s breaks the Day line, so paused time isn't drawn as listening. Day also shows `LISTENED` and `AVERAGE VOLUME`. Week's bars are `MinutesBars` in `EarsChart.kt`.
 
 PRD ref: `prd.md > Trends`.
 

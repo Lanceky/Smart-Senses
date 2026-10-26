@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import com.lanceky.smartsenses.rules.DayStat
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -17,6 +18,17 @@ interface ReadingDao {
 
     @Query("SELECT MAX(time) FROM readings WHERE sessionId = :sessionId")
     suspend fun lastTimeForSession(sessionId: Long): Long?
+
+    @Query("SELECT * FROM readings WHERE epochDay = :day ORDER BY time")
+    fun observeDay(day: Long): Flow<List<Reading>>
+
+    /** Per day: play-time-weighted average volume, time at or above the threshold, play time. */
+    @Query(
+        """SELECT epochDay, SUM(volumePercent * playingMs) * 1.0 / SUM(playingMs) AS avgVolume,
+           SUM(highMs) AS highMs, SUM(playingMs) AS playingMs, COUNT(*) AS readings
+           FROM readings WHERE epochDay >= :fromDay AND playingMs > 0 GROUP BY epochDay ORDER BY epochDay"""
+    )
+    fun observeDailyStats(fromDay: Long): Flow<List<DayStat>>
 }
 
 @Dao
@@ -47,6 +59,9 @@ interface EventDao {
 
     @Query("SELECT * FROM events WHERE kind = 'WARNING' ORDER BY time DESC, id DESC")
     fun observeWarnings(): Flow<List<Event>>
+
+    @Query("SELECT COUNT(*) FROM events WHERE kind = :kind AND time >= :since")
+    fun countKindSince(kind: String, since: Long): Flow<Int>
 
     @Query("SELECT * FROM events WHERE id = :id")
     fun observe(id: Long): Flow<Event?>
