@@ -98,3 +98,4 @@ This app was built from an empty folder for Devpost's **Build With AI: Basics** 
 - [`devpost/prd.md`](devpost/prd.md): behaviors, warning rules, states and edge cases.
 - [`devpost/spec.md`](devpost/spec.md): stack, components, data model and failure modes.
 - [`devpost/checklist.md`](devpost/checklist.md): the build in verified, committed slices, plus every change made along the way.
+- [`devpost/app-map.html`](devpost/app-map.html): a one-page map of where things live in the code. Download it and open it in a browser.
