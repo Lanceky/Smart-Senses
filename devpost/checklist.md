@@ -250,7 +250,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   3. Read the Patterns panel. Does it describe what you actually did today?
   Commit: `Patterns and Trends from recorded listening`
 
-- [ ] **8. Monitoring comes back on its own, and the repo explains the app**
+- [x] **8. Monitoring comes back on its own, and the repo explains the app**
   Becomes usable:
   - **Resume:** after a phone restart or an app update, monitoring resumes by itself and logs `monitoring resumed`.
   - **README:** what Smart-Senses is, how to build and install it, demo prep, and the honest volume note.
@@ -324,3 +324,10 @@ Activity mode: [not started]
   - Patterns: "Today: 8 high-volume stretches, 32 min at or above 80%" and "Not enough data yet (1 of 4 listening days)" match the `readings` and `events` rows.
   - Trends Day: 32 min listened at a 98% average, the same as the database. Week shows Monday's point and a 31-minute bar.
   - `PatternsTest` (6 tests) passes alongside the Ears and Eyes tests.
+- **Slice 8 checks on the A03:**
+  - `adb install -r` over the running app logged `monitoring resumed (app update)` and the service came back in the foreground.
+  - Revoking Appear on top showed `WARNING CARD: UNAVAILABLE · APPEAR ON TOP IS OFF`; restoring it cleared the notice.
+  - Battery set to Unrestricted. With the screen off from 22:05, the service kept writing a reading every 10 s until 22:16 (69 readings, no gaps). The spec's "useful unknown" asked for about 15 minutes; 11 were observed.
+  - Volume has 15 steps (0–15), as the spec assumed.
+  - Notifications were already granted, so the deny path relies on the slice 2 notice check.
+  - `adb reboot` wasn't run without your OK. Your learner check (restart the phone) covers the boot path; the receiver logs `monitoring resumed (boot)`.

@@ -447,7 +447,7 @@ PRD ref: `prd.md > Background Monitoring`, `prd.md > States and Boundaries`.
 File: `monitor/BootReceiver.kt`. Exported. It filters `BOOT_COMPLETED` and `MY_PACKAGE_REPLACED`, which are system-only broadcasts.
 
 - It uses `goAsync()` to read DataStore.
-- If `onboardingDone` and `monitoringEnabled`, it calls `MonitoringService.start(context, "boot")`, which logs `monitoring resumed`.
+- If `onboardingDone` and `monitoringEnabled`, it calls `MonitoringService.start(context, reason)`, which logs `monitoring resumed (boot)` after a restart or `monitoring resumed (app update)` after `MY_PACKAGE_REPLACED`.
 - Both broadcasts are allowed to start a foreground service from the background. The Android 15 boot limits don't include `specialUse`.
 - `MY_PACKAGE_REPLACED` also brings monitoring back after `./gradlew installDebug`, which replaces the app.
 

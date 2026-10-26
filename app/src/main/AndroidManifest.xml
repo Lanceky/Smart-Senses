@@ -38,5 +38,15 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Monitors headphone media volume to warn about prolonged loud listening" />
         </service>
+
+        <!-- System-only broadcasts: resume monitoring after a restart or an app update. -->
+        <receiver
+            android:name=".monitor.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
