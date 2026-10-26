@@ -26,7 +26,8 @@ Built for the student or developer who codes or studies for hours with music in 
 - **History:** every listening session and warning, with time, signal, reading, duration/context and severity.
 - **Trends:** volume or brightness over time for today, a week, a month or 6 months, with the 80% volume line or the 70% brightness line marked, plus the minutes over it per day or week. With too little data it says "Not enough data yet" instead of showing sample data.
 - **Patterns:** today's high-volume stretches and minutes, plus an upward trend once there are 4 listening days (the 2 latest days average at least 5 points above the 2 before).
-- **Settings:** the thresholds and timers, Eyes on/off, monitoring on/off, and **Demo mode**.
+- **Limits (your commitment):** set a max headphone volume and a max brightness. Push past either and it snaps straight back, with a witty green card: "We'd talked about this… volume stays at 60%." The lines rotate, a nudge shows at most once every 15 seconds per signal, and each hold is logged.
+- **Settings:** the thresholds and timers, Eyes on/off, Limits, monitoring on/off, and **Demo mode**.
 - **Keeps working:** a foreground service checks every second and saves a reading every 10 seconds. It resumes on its own after a phone restart or an app update.
 
 ## Privacy
@@ -51,6 +52,7 @@ Setup explains each permission before Android asks for it:
 1. **Notifications** (Android 13+): shows the ongoing "monitoring" notification. If you deny it, monitoring still runs.
 2. **Appear on top** (a special-access setting; the app opens the page for you): lets the card show over other apps. Without it, warnings are still recorded, and the dashboard shows `WARNING CARD: UNAVAILABLE` with a **FIX** button.
 3. **Samsung phones:** set Settings → Apps → Smart-Senses → Battery → **Unrestricted**, and keep the app out of Sleeping apps, so One UI doesn't stop the monitor. If monitoring does stop, the top bar shows `MONITORING: STOPPED`, and opening the app starts it again.
+4. **Modify system settings** (optional; asked for only from Settings → Limits): lets the brightness limit hold. The volume limit needs no permission. No accessibility service is used.
 
 ## Try it in about a minute (Demo mode)
 
@@ -61,21 +63,23 @@ Demo mode shortens the 15-minute volume timer and the 10-minute Eyes timer to **
 
 Then open Smart-Senses to see the warning in History, the Insight page, Patterns, Trends and the System Log.
 
+- **LIMITS:** in Settings → Limits, turn on the volume limit (and the brightness limit, with **[ ALLOW ]**). With headphones in, press volume up past the limit, or drag the brightness slider to full. It drops back with a nudge. Turn the limits off before demoing the warning cards: a 60% limit keeps the volume under the 80% line.
+
 ## How it's built
 
 Kotlin, Jetpack Compose and Material 3, with a single activity. The pieces:
 
 | Piece | Where | Role |
 | --- | --- | --- |
-| Rules | `rules/` | Plain Kotlin with no Android imports (`EarsRuleEngine`, `EyesRuleEngine`, `Patterns`, `TrendBuckets`), so the rules can be unit-tested and reused later |
-| Monitoring service | `monitor/MonitoringService.kt` | A foreground service (`specialUse`) running a 1-second loop: read the sensors, run the rules, show cards, save readings and events |
+| Rules | `rules/` | Plain Kotlin with no Android imports (`EarsRuleEngine`, `EyesRuleEngine`, `Patterns`, `TrendBuckets`, `Limits`), so the rules can be unit-tested and reused later |
+| Monitoring service | `monitor/MonitoringService.kt` | A foreground service (`specialUse`) running a 1-second loop: hold the limits, read the sensors, run the rules, show cards, save readings and events |
 | Readers | `monitor/AudioReader.kt`, `monitor/EyesReader.kt` | Headphone output, volume and playback from `AudioManager`; brightness setting and light sensor |
 | Warning card | `overlay/` | A Compose card in a `TYPE_APPLICATION_OVERLAY` window, with spring-drop and swipe-to-dismiss |
 | Resume | `monitor/BootReceiver.kt` | Restarts monitoring after `BOOT_COMPLETED` and `MY_PACKAGE_REPLACED` if it was on |
 | Data | `data/` | Room (`readings`, `brightness_readings`, `listening_sessions`, `events`) and DataStore settings |
 | Screens | `ui/` | Onboarding, Dashboard, Trends (a hand-drawn Canvas chart), History, Insight, Settings |
 
-There are 38 unit tests for the rules in `app/src/test/`: 17 Ears, 12 Eyes, 6 Patterns and 3 Trends.
+There are 42 unit tests for the rules in `app/src/test/`: 17 Ears, 12 Eyes, 6 Patterns, 3 Trends and 4 Limits.
 
 ## Known limitations
 
@@ -83,6 +87,7 @@ There are 38 unit tests for the rules in `app/src/test/`: 17 Ears, 12 Eyes, 6 Pa
 - **Android only:** iOS doesn't allow cards over other apps.
 - **Battery managers can stop background work:** Samsung's sleeping apps, for example. The app shows `STOPPED` honestly rather than pretending.
 - **Not counted while Android pauses the loop:** if Android pauses monitoring (Doze), the missed time isn't counted. It may under-count, but never over-counts.
+- **Limits snap back rather than block:** Samsung's volume panel may flash the higher step first. They hold only while monitoring runs. Adaptive brightness may fight the brightness limit; this is untested, because the A03 was on manual brightness.
 - **Not built yet:** a room-light chart and multi-day Eyes patterns, device temperature (the Device card is a placeholder), and clearing history.
 
 ## How it was planned and built

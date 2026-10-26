@@ -138,6 +138,22 @@ Source: added during the build at your request, once the Ears flow worked outsid
 - [ ] Eyes cards are always amber. There's no red level: it's a nudge, not a health claim.
 - [ ] Without a light sensor, the card says Eyes can't tell a dim room and never warns.
 
+### Limits: Your Commitment
+Source: added during the build at your request after Trends. The user commits to a ceiling, and the app keeps it: "if user increases volume/brightness trying to increase past the set limit, notify user with witty notifications… and is unable to increase the volume/brightness past that level."
+- [ ] **Settings → Limits** has two switches:
+  - **Volume limit (headphones)**, with a max volume;
+  - **Brightness limit**, with a max brightness.
+
+  Both are off until the user turns them on. Both default to 60% and can be set from 20% to 95% in 5% steps.
+- [ ] With the volume limit on and headphones connected, raising the media volume past the limit snaps it straight back to the highest step at or under the limit, usually in under a second. The phone's speaker is never limited.
+- [ ] With the brightness limit on, raising the brightness past the limit snaps it back to the limit. This needs Android's **Modify system settings** access. Settings asks for it with an [ ALLOW ] button and says the limit can't hold without it.
+- [ ] Each time a limit holds, a green card drops over the current app with a witty line that names the limit, for example "We'd talked about this… volume stays at 60%." The lines rotate.
+  - Without Appear on top, the line shows as a short toast instead.
+  - With the screen off or locked, no card shows.
+- [ ] Limit cards come at most once every 15 seconds per signal. They don't count toward the 3-cards-a-day cap and aren't History rows. Each hold is logged in the System Log, for example "volume held at 60% (tried 67%)."
+- [ ] The dashboard shows each active limit next to its threshold, for example "limit 60% (committed)."
+- [ ] Limits hold only while monitoring is on.
+
 ### Settings and Demo Mode
 Source: `scope.md > Open for the PRD` ("how the demo triggers a real warning within a minute").
 - [ ] **Settings → Ears → Warning thresholds** has: high-volume threshold (80%), continuous warning (15 min), and daily cumulative warning (60 min).
@@ -157,6 +173,9 @@ Source: `scope.md > Open for the PRD` ("how the demo triggers a real warning wit
 - **Monitoring off:** the top bar shows `MONITORING: OFF`. No readings are recorded and no cards appear.
 - **Demo mode on:** the top bar shows `DEMO MODE` so nobody confuses it with normal timing.
 - **Snoozed:** the dashboard shows that cards are snoozed and until when.
+- **Volume limit on, no headphones:** nothing is limited. The speaker is never capped.
+- **Brightness limit on without Modify system settings:** the brightness can't be held. Settings shows the amber prompt with [ ALLOW ].
+- **A limit below its warning line:** for example, a 60% volume limit under the 80% threshold. The matching warning can't fire, because the limit keeps the level below it.
 - **Persistence:** readings, events, and settings stay on the device across app and phone restarts. There's no account and no cloud.
 
 ## Product Decisions
@@ -173,6 +192,7 @@ Source: `scope.md > Open for the PRD` ("how the demo triggers a real warning wit
 - **Onboarding has no permission dumping, is privacy first, and has no dead ends.** Skipped permissions never block the app.
 - **The dashboard is Ears-first.** Eyes sits under it, and Device stays a placeholder until it's built.
 - **Patterns are rule-based comparisons with no medical claims.**
+- **Limits are the user's commitment, not the app's judgment.** The app holds only a ceiling the user chose, by snapping back right after a change rather than blocking the button. Limit cards are green, witty, rate-limited to one per 15 seconds per signal, and outside the daily cap. Added during the build at your request.
 - **Trends stays simple:** one chart at a time (Volume or Brightness), Today/Week/Month/6 Months, and an empty state. It started as one Ears chart with Day/Week; the brightness toggle and longer ranges were added during the build at your request.
 - **Assumptions to confirm:**
   - Copy for the red and daily cards reuses your earlier wording: red ends "Lower it to protect your hearing," and daily ends "Give your ears a break."
@@ -202,6 +222,7 @@ Order follows your scope priority: "make the first milestone a complete, working
    - The circuit-eye logo as the launcher icon
 3. **Added during the build:** Eyes, a bright screen in a dim room (your request after the Ears flow worked).
 4. **Added during the build:** the Trends Volume/Brightness toggle and the Month and 6 Months ranges (your request after slice 8).
+5. **Added during the build:** Limits, a committed max volume and max brightness that hold with a witty nudge (your request after slice 9).
 
 ## Deferred From the POC
 - **Eyes extras:** Eyes patterns over several days (such as a late-night habit) and Eyes-specific advice (`scope.md > Later`). The Eyes card, rule, History rows and its Insight (the shared page) are built.
@@ -218,7 +239,7 @@ Order follows your scope priority: "make the first milestone a complete, working
 - **Diagnosing hearing problems or guaranteeing protection.** The app "can't diagnose hearing or vision problems."
 - **Measuring real sound levels in decibels.** Media volume is a proxy.
 - **Monitoring the built-in speaker.** Only headphone outputs count.
-- **Changing the volume for the user.** The user decides (`scope.md > The Core Loop`: they "lower the volume or dismiss the card").
+- **Changing the volume or brightness on the app's own judgment.** Warnings leave the decision to the user (`scope.md > The Core Loop`: they "lower the volume or dismiss the card"). The only exception is a ceiling the user chose under Limits, added during the build.
 - **Accounts, cloud sync, or sending data off the device.** Everything stays local.
 
 ## Open Questions

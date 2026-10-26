@@ -29,8 +29,23 @@ object Permissions {
     fun overlaySettingsIntent(context: Context): Intent =
         Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
 
+    /** "Modify system settings": only used to turn brightness back down to your limit. */
+    fun canWriteSettings(context: Context): Boolean = Settings.System.canWrite(context)
+
+    fun writeSettingsIntent(context: Context): Intent =
+        Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:${context.packageName}"))
+
     fun notificationSettingsIntent(context: Context): Intent =
         Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+}
+
+/** Re-checked every time the screen comes back, like the other permissions. */
+@Composable
+fun rememberCanWriteSettings(): Boolean {
+    val context = LocalContext.current
+    var allowed by remember { mutableStateOf(Permissions.canWriteSettings(context)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { allowed = Permissions.canWriteSettings(context) }
+    return allowed
 }
 
 /** Re-checks every time the screen comes back, e.g. after the user returns from a Settings page. */

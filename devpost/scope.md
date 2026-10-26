@@ -41,6 +41,7 @@ Ears only, end to end:
 - Recording of listening usage on the device: when headphones connect and disconnect, volume over time, time spent at high volume, and each warning. It's shown in a simple history.
 - Pattern detection over that recorded data, such as volume creeping up during a session or long stretches at high volume, shown on the dashboard.
 - **Eyes, added during the build** at your request once the Ears flow worked outside the app: a bright screen in a dim room (screen brightness setting plus the phone's light sensor) gets its own amber card, History row and Settings section. It reuses the Ears foundation: the same service, card, gates and shared daily cap. Its brightness is charted in Trends too: a Volume/Brightness toggle with Today, Week, Month and 6 Months ranges, added at your request near the end of the build.
+- **Limits, added at the end of the build** at your request: the user commits to a max headphone volume and a max brightness. Going past either snaps back to the limit, with a witty nudge such as "We'd talked about this… volume stays at 60%." Warnings still leave the decision to the user; a limit is a ceiling the user chose.
 
 ## Later
 Once the ears flow works reliably outside the app, "reuse that foundation for brightness and temperature."

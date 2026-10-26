@@ -52,6 +52,10 @@ interface CardWarning {
     val severity: Severity
     val message: String
     val demoMode: Boolean
+
+    /** The card's top line; null shows the severity, e.g. "▲ CAUTION". */
+    val heading: String? get() = null
+    val hint: String get() = "tap for details · swipe up to dismiss"
 }
 
 data class Warning(

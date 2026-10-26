@@ -80,4 +80,5 @@ object EventKind {
     const val SNOOZED = "SNOOZED"
     const val EYES_TIMER_STARTED = "EYES_TIMER_STARTED"
     const val EYES_TIMER_RESET = "EYES_TIMER_RESET"
+    const val LIMIT_HELD = "LIMIT_HELD"
 }

@@ -189,7 +189,12 @@ private fun EarsCard(settings: Settings, live: Live) {
             )
         }
         VolumeBar(if (running) live.volumePercent else 0, settings.thresholdPercent, volumeColor)
-        ConsoleText("threshold ${settings.thresholdPercent}%", color = TextDim, size = 11.sp)
+        ConsoleText(
+            "threshold ${settings.thresholdPercent}%" +
+                if (settings.volumeLimitEnabled) " · limit ${settings.volumeLimitPercent}% (committed)" else "",
+            color = TextDim,
+            size = 11.sp,
+        )
         Spacer(Modifier.height(6.dp))
         when {
             !running -> CapsLabel("PLAYBACK: —")
@@ -255,7 +260,12 @@ private fun EyesCard(settings: Settings, live: Live, onTurnOn: () -> Unit) {
             CapsLabel(if (live.autoBrightness) "AUTO" else "MANUAL", Modifier.padding(bottom = 8.dp))
         }
         VolumeBar(live.brightnessPercent, config.brightnessPercent, color)
-        ConsoleText("threshold ${config.brightnessPercent}%", color = TextDim, size = 11.sp)
+        ConsoleText(
+            "threshold ${config.brightnessPercent}%" +
+                if (settings.brightnessLimitEnabled) " · limit ${settings.brightnessLimitPercent}% (committed)" else "",
+            color = TextDim,
+            size = 11.sp,
+        )
         Spacer(Modifier.height(6.dp))
         when {
             !live.lightSensor -> CapsLabel("ROOM LIGHT: NO SENSOR · Eyes can't tell a dim room", color = Amber)

@@ -111,7 +111,7 @@ fun WarningCard(warning: CardWarning, onTap: () -> Unit, onGone: () -> Unit) {
             Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "${warning.severity.glyph()} ${warning.severity.label()}",
+                        warning.heading ?: "${warning.severity.glyph()} ${warning.severity.label()}",
                         color = accent,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -130,7 +130,7 @@ fun WarningCard(warning: CardWarning, onTap: () -> Unit, onGone: () -> Unit) {
                 Spacer(Modifier.height(4.dp))
                 Text(warning.message, color = TextMain, fontSize = 14.sp, fontFamily = FontFamily.Monospace, lineHeight = 18.sp)
                 Spacer(Modifier.height(4.dp))
-                Text("tap for details · swipe up to dismiss", color = TextDim, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                Text(warning.hint, color = TextDim, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
             }
         }
     }

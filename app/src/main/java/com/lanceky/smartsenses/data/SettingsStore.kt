@@ -25,6 +25,10 @@ data class Settings(
     val eyesBrightnessPercent: Int = 70,
     val eyesDimLux: Int = 20,
     val eyesMinutes: Int = 10,
+    val volumeLimitEnabled: Boolean = false,
+    val volumeLimitPercent: Int = 60,
+    val brightnessLimitEnabled: Boolean = false,
+    val brightnessLimitPercent: Int = 60,
 )
 
 class SettingsStore(private val context: Context) {
@@ -41,6 +45,10 @@ class SettingsStore(private val context: Context) {
         val eyesBrightnessPercent = intPreferencesKey("eyesBrightnessPercent")
         val eyesDimLux = intPreferencesKey("eyesDimLux")
         val eyesMinutes = intPreferencesKey("eyesMinutes")
+        val volumeLimitEnabled = booleanPreferencesKey("volumeLimitEnabled")
+        val volumeLimitPercent = intPreferencesKey("volumeLimitPercent")
+        val brightnessLimitEnabled = booleanPreferencesKey("brightnessLimitEnabled")
+        val brightnessLimitPercent = intPreferencesKey("brightnessLimitPercent")
     }
 
     val settings: Flow<Settings> = context.settingsDataStore.data.map { it.toSettings() }
@@ -58,6 +66,10 @@ class SettingsStore(private val context: Context) {
         eyesBrightnessPercent = this[Keys.eyesBrightnessPercent] ?: 70,
         eyesDimLux = this[Keys.eyesDimLux] ?: 20,
         eyesMinutes = this[Keys.eyesMinutes] ?: 10,
+        volumeLimitEnabled = this[Keys.volumeLimitEnabled] ?: false,
+        volumeLimitPercent = this[Keys.volumeLimitPercent] ?: 60,
+        brightnessLimitEnabled = this[Keys.brightnessLimitEnabled] ?: false,
+        brightnessLimitPercent = this[Keys.brightnessLimitPercent] ?: 60,
     )
 
     suspend fun setOnboardingDone(done: Boolean) = edit { it[Keys.onboardingDone] = done }
@@ -70,6 +82,10 @@ class SettingsStore(private val context: Context) {
     suspend fun setEyesBrightnessPercent(value: Int) = edit { it[Keys.eyesBrightnessPercent] = value.coerceIn(50, 100) }
     suspend fun setEyesDimLux(value: Int) = edit { it[Keys.eyesDimLux] = value.coerceIn(5, 100) }
     suspend fun setEyesMinutes(value: Int) = edit { it[Keys.eyesMinutes] = value.coerceIn(5, 60) }
+    suspend fun setVolumeLimitEnabled(on: Boolean) = edit { it[Keys.volumeLimitEnabled] = on }
+    suspend fun setVolumeLimitPercent(value: Int) = edit { it[Keys.volumeLimitPercent] = value.coerceIn(20, 95) }
+    suspend fun setBrightnessLimitEnabled(on: Boolean) = edit { it[Keys.brightnessLimitEnabled] = on }
+    suspend fun setBrightnessLimitPercent(value: Int) = edit { it[Keys.brightnessLimitPercent] = value.coerceIn(20, 95) }
 
     /** Turning Demo mode on also resets cooldowns and today's card count (capResetAt) and clears snooze. */
     suspend fun setDemoMode(on: Boolean, now: Long = System.currentTimeMillis()) = edit {

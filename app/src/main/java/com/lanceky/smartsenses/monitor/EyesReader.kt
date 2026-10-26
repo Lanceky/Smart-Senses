@@ -7,6 +7,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.provider.Settings.System as SystemSettings
 import com.lanceky.smartsenses.rules.EyesSample
+import com.lanceky.smartsenses.rules.Limits
 
 /**
  * Reads the screen brightness setting and the room light from the phone's light sensor. Neither needs a permission.
@@ -40,6 +41,24 @@ class EyesReader(private val context: Context) : SensorEventListener {
         val auto = SystemSettings.getInt(resolver, SystemSettings.SCREEN_BRIGHTNESS_MODE, 0) ==
             SystemSettings.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
         return EyesSample(brightnessPercent = (raw * 100 + 127) / 255, autoBrightness = auto, lux = lux)
+    }
+
+    /**
+     * Turns the brightness setting back down to the limit. Needs "Modify system settings" (WRITE_SETTINGS).
+     * Returns the % it had been raised to, or null if it was within the limit or Android doesn't allow the write.
+     */
+    fun capBrightness(limitPercent: Int): Int? {
+        if (!SystemSettings.canWrite(context)) return null
+        val resolver = context.contentResolver
+        val raw = SystemSettings.getInt(resolver, SystemSettings.SCREEN_BRIGHTNESS, 0)
+        val allowed = Limits.maxBrightnessRaw(limitPercent)
+        if (raw <= allowed) return null
+        return try {
+            SystemSettings.putInt(resolver, SystemSettings.SCREEN_BRIGHTNESS, allowed)
+            (raw.coerceIn(0, 255) * 100 + 127) / 255
+        } catch (e: SecurityException) {
+            null
+        }
     }
 
     override fun onSensorChanged(event: SensorEvent) {

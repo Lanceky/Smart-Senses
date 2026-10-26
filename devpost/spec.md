@@ -225,6 +225,7 @@ Files: `ui/onboarding/OnboardingFlow.kt`, `permissions/Permissions.kt`.
 - **Install-time permissions** (manifest only): `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`, `RECEIVE_BOOT_COMPLETED`.
   - `POST_NOTIFICATIONS` and `SYSTEM_ALERT_WINDOW` are also declared in the manifest.
   - Volume and headphone checks need no permission.
+- **Modify system settings** (`WRITE_SETTINGS`, special access, added with Limits) isn't part of onboarding. Settings → Limits asks for it only when the brightness limit is on: an amber prompt with **[ ALLOW ]** opens `Settings.ACTION_MANAGE_WRITE_SETTINGS` for the app, and `rememberCanWriteSettings()` re-checks on `ON_RESUME`.
 
 PRD ref: `prd.md > Setup and Permissions`, `prd.md > States and Boundaries`.
 
@@ -253,10 +254,11 @@ File: `monitor/MonitoringService.kt` (a `LifecycleService`).
 - Log `monitoring started`, or `monitoring resumed` when it's a system or boot restart.
 
 **The loop:** every 1 s:
-1. `AudioReader.read()`.
-2. Check whether the screen is usable: on and unlocked (`PowerManager.isInteractive` and not `KeyguardManager.isKeyguardLocked`).
-3. `engine.onTick(sample, config, gates)`.
-4. Apply the result.
+1. Hold any committed limits (`enforceLimits()`, added with Limits; see **Limits**).
+2. `AudioReader.read()`.
+3. Check whether the screen is usable: on and unlocked (`PowerManager.isInteractive` and not `KeyguardManager.isKeyguardLocked`).
+4. `engine.onTick(sample, config, gates)`.
+5. Apply the result.
 
 **Applying a tick's result:**
 - Update `LiveStatus`.
@@ -279,7 +281,7 @@ File: `monitor/MonitoringService.kt` (a `LifecycleService`).
 - A new `capResetAt` calls `engine.resetCooldownsAndCap()`.
 - `monitoringEnabled = false` calls `stopSelf()`.
 
-**`onDestroy`:** flush both readings, close the session, log `monitoring stopped`, set `LiveStatus.running = false`, and remove any card.
+**`onDestroy`:** flush both readings, close the session, unregister the limit listeners, log `monitoring stopped`, set `LiveStatus.running = false`, and remove any card.
 
 PRD ref: `prd.md > Background Monitoring`, `prd.md > Warning Rules`.
 
@@ -381,6 +383,34 @@ Files: `monitor/EyesReader.kt`, `rules/EyesModels.kt`, `rules/EyesRuleEngine.kt`
 - **Docs:** https://developer.android.com/reference/android/hardware/SensorManager · https://developer.android.com/reference/android/provider/Settings.System
 
 PRD ref: `prd.md > Eyes: Bright Screen in a Dim Room`.
+
+### Limits (added during the build)
+Files: `rules/Limits.kt` (plain Kotlin), `monitor/AudioReader.kt` (`capVolume`), `monitor/EyesReader.kt` (`capBrightness`), `monitor/MonitoringService.kt` (`enforceLimits`, `onLimitHeld`).
+
+- **Snap back, don't block.** The app can't stop a volume key or the brightness slider. It writes the level back right after the change.
+  - **Volume** (only with headphones connected): `AudioManager.setStreamVolume(STREAM_MUSIC, allowed, 0)`. No permission is needed.
+  - **Brightness:** `Settings.System.putInt(SCREEN_BRIGHTNESS, limit × 255 / 100)`. This needs the **Modify system settings** special access (`WRITE_SETTINGS`), and the reader checks `Settings.System.canWrite` first.
+- **The allowed level:**
+  - `Limits.maxVolumeIndex(limit, min, max)` is the highest volume step whose % (rounded the same way as the reader) is at or under the limit. With 15 steps, 60% is step 9.
+  - `Limits.maxBrightnessRaw(limit)`: 60% is 153 of 255.
+- **Triggers:**
+  - the 1-second loop;
+  - plus, for an instant snap-back, a receiver for `android.media.VOLUME_CHANGED_ACTION`;
+  - and a `ContentObserver` on `SCREEN_BRIGHTNESS`.
+
+  Our own write fires the observer again, but the value is already within the limit, so nothing loops. All three require `monitoringEnabled`.
+- **The nudge:**
+  - `LimitNudger` allows one card per signal every 15 s (`NUDGE_GAP_MS`) and rotates five lines per signal, for example "We'd talked about this… volume stays at 60%."
+  - Each hold logs `LIMIT_HELD` with the level the user tried.
+  - When the screen is usable, a green `LimitNudge` card (heading `● LIMIT HELD`) is shown through `WarningCardOverlay`, or a toast if Appear on top is missing.
+  - A tap opens the app. Limit cards aren't warnings: no History row, no cooldown, and not part of the daily cap.
+- **Unit tests** (`LimitsTest`, 4):
+  - the exact volume step for every limit from 0 to 100 on 15 steps;
+  - brightness never reads above the limit;
+  - the 15-second gap per signal;
+  - the lines name the limit and rotate.
+
+PRD ref: `prd.md > Limits: Your Commitment`.
 
 ### Live Status
 File: `monitor/LiveStatus.kt`. One in-memory `StateFlow<Live>` that the service writes and the screens read. The service and the screens run in the same process.
@@ -503,6 +533,10 @@ File: `data/SettingsStore.kt`. A Preferences DataStore exposes `Flow<Settings>` 
 | `demoMode` | `false` | |
 | `capResetAt` | `0` | Set to *now* when Demo mode turns on |
 | `snoozeUntil` | `0` | |
+| `volumeLimitEnabled` | `false` | Limits (added during the build) |
+| `volumeLimitPercent` | `60` | 20–95, steps of 5 |
+| `brightnessLimitEnabled` | `false` | Needs Modify system settings |
+| `brightnessLimitPercent` | `60` | 20–95, steps of 5 |
 
 `setDemoMode(true)` does three things in one edit:
 - sets `demoMode`;
@@ -579,6 +613,7 @@ Shown in `DashboardScreen` from `EventDao.observeRecent(8)`. Each line: `> 14:02
 - `WARNING`
 - `DEMO_MODE_ON`
 - `SNOOZED`
+- `LIMIT_HELD` (added with Limits): "volume held at 60% (tried 67%)" or "brightness held at 60% (tried 100%)"
 
 PRD ref: `prd.md > System Log`.
 
@@ -650,6 +685,13 @@ File: `ui/settings/SettingsScreen.kt`.
 - read-only `Demo duration: 1 min`.
 
 The red rule (≥ 95% for 5 min) is shown read-only.
+
+**LIMITS / YOUR COMMITMENT** (added during the build), between Eyes and Demo mode:
+- `Volume limit (headphones)` and `Brightness limit` switches, each with a max stepper (20–95%);
+- an amber prompt with **[ ALLOW ]** while the brightness limit is on without Modify system settings;
+- a note that adaptive brightness may fight the limit, and that limits are not medical advice.
+
+The dashboard's Ears and Eyes threshold lines add `· limit 60% (committed)` while a limit is on.
 
 **DEMO MODE [on/off].**
 - Turning it on resets the cooldowns, today's card count and the snooze, and logs `DEMO_MODE_ON`.
@@ -785,7 +827,8 @@ Smart-Senses/
 │       │   │   │   ├── EyesModels.kt          # EyesSample, EyesConfig, EyesWarning (added during the build)
 │       │   │   │   ├── EyesRuleEngine.kt      # bright-in-dim timer, grace, cooldown, shared cap
 │       │   │   │   ├── Patterns.kt            # today summary + 4-day upward-trend rule
-│       │   │   │   └── TrendBuckets.kt        # day and week buckets for Trends (added with the toggles)
+│       │   │   │   ├── TrendBuckets.kt        # day and week buckets for Trends (added with the toggles)
+│       │   │   │   └── Limits.kt              # committed max volume/brightness, nudge lines, 15 s gap (added during the build)
 │       │   │   ├── monitor/                   # the background part
 │       │   │   │   ├── MonitoringService.kt   # foreground service: 1 s loop, Room writes, overlay calls
 │       │   │   │   ├── AudioReader.kt         # headphones? volume %? playing?
@@ -821,7 +864,8 @@ Smart-Senses/
 │           ├── EarsRuleEngineTest.kt      # JVM tests for every rule transition
 │           ├── EyesRuleEngineTest.kt      # JVM tests for the Eyes rule
 │           ├── PatternsTest.kt
-│           └── TrendBucketsTest.kt
+│           ├── TrendBucketsTest.kt
+│           └── LimitsTest.kt
 ├── gradle/
 │   ├── libs.versions.toml          # all versions from Stack in one place
 │   └── wrapper/                    # Gradle 9.3.1 wrapper
@@ -886,6 +930,14 @@ The `agent/` folder is the skill pack's copy for another agent, so it's committe
 - With 15 volume steps, 80% is step 12, and red (≥ 95%) needs step 15.
 
 **KSP with built-in Kotlin** can fail at build time. The first build step proves it. The fallback is in **Stack**.
+
+**Limits (added during the build):**
+- **Snap-back is not a hard block.** Samsung's volume panel may briefly show the higher step before it drops back.
+- **The instant path is undocumented.** `VOLUME_CHANGED_ACTION` is a hidden broadcast. If a phone doesn't send it, the 1-second loop still holds the limit, just a little later.
+- **Adaptive brightness** may raise `SCREEN_BRIGHTNESS` itself. The limit then pulls it back down and may show a nudge the user didn't cause. This hasn't been tested; the A03 runs on manual brightness.
+- **Without Modify system settings,** the brightness write throws `SecurityException`, which is caught. Nothing is held, and Settings shows the prompt.
+- **A limit under a warning line hides that warning.** A 60% volume limit means the 80% Ears rule can't fire; turn the limits off to demo the warning cards.
+- **Limits hold only while monitoring runs.** If Samsung kills the service, nothing holds until it's back.
 
 ## What Was Simplified and Why
 

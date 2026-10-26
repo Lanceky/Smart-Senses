@@ -31,6 +31,8 @@ import com.lanceky.smartsenses.data.Event
 import com.lanceky.smartsenses.data.EventKind
 import com.lanceky.smartsenses.data.Settings
 import com.lanceky.smartsenses.monitor.MonitoringService
+import com.lanceky.smartsenses.permissions.Permissions
+import com.lanceky.smartsenses.permissions.rememberCanWriteSettings
 import com.lanceky.smartsenses.rules.EarsConfig
 import com.lanceky.smartsenses.ui.components.CapsLabel
 import com.lanceky.smartsenses.ui.components.ConsoleButton
@@ -108,6 +110,37 @@ fun SettingsScreen(settings: Settings) {
                 "Times a bright screen while the room is dim and the phone is unlocked. Brightness is your phone's brightness " +
                     "setting; room light comes from its light sensor. Same cooldown and snooze as Ears, and the " +
                     "${EarsConfig.DAILY_CAP}-cards-a-day limit is shared. Not medical advice.",
+                color = TextDim, size = 12.sp,
+            )
+        }
+
+        ConsolePanel("LIMITS / YOUR COMMITMENT") {
+            ToggleRow("Volume limit (headphones)", settings.volumeLimitEnabled) { on ->
+                scope.launch { store.setVolumeLimitEnabled(on) }
+            }
+            Stepper("Max volume", "${settings.volumeLimitPercent}%",
+                onMinus = { scope.launch { store.setVolumeLimitPercent(settings.volumeLimitPercent - 5) } },
+                onPlus = { scope.launch { store.setVolumeLimitPercent(settings.volumeLimitPercent + 5) } })
+            ToggleRow("Brightness limit", settings.brightnessLimitEnabled) { on ->
+                scope.launch { store.setBrightnessLimitEnabled(on) }
+            }
+            Stepper("Max brightness", "${settings.brightnessLimitPercent}%",
+                onMinus = { scope.launch { store.setBrightnessLimitPercent(settings.brightnessLimitPercent - 5) } },
+                onPlus = { scope.launch { store.setBrightnessLimitPercent(settings.brightnessLimitPercent + 5) } })
+            if (settings.brightnessLimitEnabled && !rememberCanWriteSettings()) {
+                Spacer(Modifier.height(6.dp))
+                ConsoleText(
+                    "> To hold brightness, allow \"Modify system settings\". Smart-Senses only uses it to turn " +
+                        "brightness back down to your limit.",
+                    color = Amber, size = 12.sp,
+                )
+                ConsoleButton("allow", onClick = { context.startActivity(Permissions.writeSettingsIntent(context)) })
+            }
+            Spacer(Modifier.height(6.dp))
+            ConsoleText(
+                "Commit to a ceiling. While monitoring is on, turning headphone volume or brightness above it snaps " +
+                    "straight back, with a reminder. Brightness is the phone's setting: with adaptive brightness on, " +
+                    "Android may still adjust the screen. Your choice, not medical advice.",
                 color = TextDim, size = 12.sp,
             )
         }

@@ -302,11 +302,36 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   3. Turn the brightness up in a dark room for a minute, then look at Brightness · Today.
   Commit: `Trends: volume or brightness over today, week, month and 6 months`
 
+- [x] **10. Commit to a max volume and brightness: going higher snaps back with a witty nudge (added during the build)**
+  Becomes usable:
+  - **Settings → Limits:** a volume limit for headphones and a brightness limit, each with a max (60% by default).
+  - **Holding the limit:** raising the volume or brightness past the limit drops straight back to it.
+  - **The nudge:** a green card says something like "We'd talked about this… volume stays at 60%."
+  Why now: your request after slice 9. It reuses the service, the readers and the warning card, so it adds one rules file, two writes and a Settings panel.
+  PRD ref: `prd.md > Limits: Your Commitment`, `prd.md > States and Boundaries`, `prd.md > Non-Goals`
+  Spec ref: Components: `Limits (added during the build)`, `Monitoring Service`, `Settings Store (DataStore)`, `Onboarding and Permissions`, `Settings Screen and Demo Mode`, `System Log`. Plus `spec.md > Important Failure Modes`.
+  Build:
+  - **`rules/Limits.kt` and `LimitsTest`:** the exact volume step for a limit, raw brightness for a limit, the rotating lines, and the 15-second nudge gap.
+  - **Readers:** `AudioReader.capVolume` (headphones only) and `EyesReader.capBrightness` (needs Modify system settings).
+  - **Service:** `enforceLimits()` every tick plus instant triggers: the volume-changed broadcast and a brightness observer. Each hold logs `LIMIT_HELD` and shows a `LimitNudge` card, or a toast.
+  - **Settings:** the LIMITS panel, the [ ALLOW ] prompt, the four new DataStore keys and `WRITE_SETTINGS` in the manifest. The dashboard shows `limit X% (committed)`.
+  Verify (mechanical):
+  1. `./gradlew assembleDebug testDebugUnitTest`: 42 tests pass.
+  2. Headphones in, volume limit 60%, eight volume-up key presses: the volume holds at step 9 (60%), `volume held at 60% (tried 67%)` is logged, and the card appears.
+  3. With Modify system settings allowed and the brightness limit at 60%: setting brightness to 255 drops back to 153, and so does a real drag of the quick-settings slider. Both log `brightness held at 60% (tried …%)`.
+  4. A second press within 15 s gives no new card or log line. The next card uses the next line.
+  5. The dashboard shows `limit 60% (committed)` on both thresholds. With the access removed, Settings shows the amber prompt and [ ALLOW ].
+  Learner check:
+  1. In Settings → Limits, turn on both limits and allow Modify system settings.
+  2. With headphones in, press volume up a few times in a music app. Then drag the brightness slider to full.
+  3. Does each one stop at your limit with a nudge you'd want to see?
+  Commit: `Limits: hold volume and brightness at your committed max, with a witty nudge`
+
 ## Hands-on Checkpoints
 
 - [x] Early usable behavior explored: after slice 2. You try the card over a music app in Demo mode, while feedback can still change the card's look, wording, timing, and the remaining steps.
   - Done with real wired headphones: the card fired at 93% after 1 minute. Feedback: the card should drop vertically from the status bar with a buoyant bounce. Changed to a spring drop; a frame-by-frame screen recording confirmed the overshoot and bob.
-- [ ] Final kick-the-tires exploration and feedback completed: after slice 9, the full core journey from a fresh install.
+- [ ] Final kick-the-tires exploration and feedback completed: after slice 10, the full core journey from a fresh install.
 
 ## Final Review
 
@@ -365,3 +390,16 @@ Activity mode: [not started]
     - Brightness · Today read `SCREEN ON: 3 min · AVERAGE BRIGHTNESS: 35%`, the same as the database (50 s bright in a dim room, so `0 min`);
     - Volume showed 42 min above 80% on every range, matching `readings`.
   - Updated `scope.md`, `prd.md > Trends` (plus Product Decisions and Deferred), `spec.md` (Trends, Monitoring Service, Room, Data Model, File Structure, What Was Simplified) and the README.
+- **Limits added during the build** (your request after slice 9): a committed max headphone volume and max brightness, added as slice 10. The final kick-the-tires checkpoint moves to after slice 10.
+  - `prd.md > Non-Goals` said the app never changes the volume for the user. It now says the app never does so on its own judgment; the only exception is a ceiling the user chose. Warnings still leave the decision to the user.
+  - **Snap back, not block:** Android doesn't let an ordinary app stop the volume keys or the brightness slider, so the app writes the level back right after it changes. Volume needs no permission. Brightness needs Modify system settings, asked for from Settings → Limits only. No accessibility service is used.
+  - **Fixed during verification:**
+    - The first volume-step formula could stop a step below the limit, which `LimitsTest` caught. It's now an exact search using the reader's rounding.
+    - The card heading wrapped into the `DEMO` tag, so it was shortened to `● LIMIT HELD`.
+  - **Verified on the A03:**
+    - Volume key presses held at step 9 within 0.8 s.
+    - A brightness of 255 dropped to 153 within 0.7 s. A real quick-settings slider drag also held at 153, and so did your own try after granting access (`tried 82%`).
+    - Cards and log lines respected the 15-second gap and rotated.
+  - **Untested:** adaptive brightness. The A03 runs on manual brightness, and the risk is listed in `spec.md > Important Failure Modes`.
+  - A limit under a warning line stops that warning from firing. Turn the limits off to demo the Ears and Eyes cards.
+  - Updated `scope.md`, `prd.md` (new Limits section, States, Product Decisions, Non-Goals), `spec.md` (new Limits component, Monitoring Service, Settings keys, permissions, System Log, File Structure, Failure Modes) and the README.

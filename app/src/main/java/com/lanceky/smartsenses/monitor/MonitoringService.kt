@@ -1,13 +1,19 @@
 package com.lanceky.smartsenses.monitor
 
 import android.app.KeyguardManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.database.ContentObserver
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
+import android.widget.Toast
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
@@ -21,6 +27,7 @@ import com.lanceky.smartsenses.data.Reading
 import com.lanceky.smartsenses.data.Settings
 import com.lanceky.smartsenses.data.Signal
 import com.lanceky.smartsenses.overlay.WarningCardOverlay
+import com.lanceky.smartsenses.permissions.Permissions
 import com.lanceky.smartsenses.rules.AudioSample
 import com.lanceky.smartsenses.rules.EarsConfig
 import com.lanceky.smartsenses.rules.EarsRuleEngine
@@ -28,6 +35,10 @@ import com.lanceky.smartsenses.rules.EyesConfig
 import com.lanceky.smartsenses.rules.EyesRuleEngine
 import com.lanceky.smartsenses.rules.EyesWarning
 import com.lanceky.smartsenses.rules.Gates
+import com.lanceky.smartsenses.rules.LimitKind
+import com.lanceky.smartsenses.rules.LimitNudge
+import com.lanceky.smartsenses.rules.LimitNudger
+import com.lanceky.smartsenses.rules.Limits
 import com.lanceky.smartsenses.rules.Output
 import com.lanceky.smartsenses.rules.Rule
 import com.lanceky.smartsenses.rules.Severity
@@ -49,6 +60,17 @@ class MonitoringService : LifecycleService() {
     private val engine = EarsRuleEngine()
     private val eyesEngine = EyesRuleEngine()
     private var eyesReader: EyesReader? = null
+    private var audioReader: AudioReader? = null
+    private val nudger = LimitNudger()
+
+    // The 1-second tick also holds the limits; these make the snap-back instant.
+    private val volumeChanged = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = enforceLimits()
+    }
+    private val brightnessChanged = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) = enforceLimits()
+    }
+    private var listening = false
     private var loop: Job? = null
     private var settings = Settings()
 
@@ -114,8 +136,17 @@ class MonitoringService : LifecycleService() {
             }
         }
 
-        val reader = AudioReader(this)
+        val reader = AudioReader(this).also { this.audioReader = it }
         val eyesReader = EyesReader(this).also { this.eyesReader = it }
+        ContextCompat.registerReceiver(
+            this, volumeChanged, IntentFilter(VOLUME_CHANGED_ACTION), ContextCompat.RECEIVER_EXPORTED,
+        )
+        contentResolver.registerContentObserver(
+            android.provider.Settings.System.getUriFor(android.provider.Settings.System.SCREEN_BRIGHTNESS),
+            false,
+            brightnessChanged,
+        )
+        listening = true
         val power = getSystemService(PowerManager::class.java)
         val keyguard = getSystemService(KeyguardManager::class.java)
         var lastOutput: Output? = null
@@ -123,6 +154,7 @@ class MonitoringService : LifecycleService() {
         eyesTickAt = lastFlushAt
         eyesFlushAt = lastFlushAt
         while (lifecycleScope.isActive) {
+            enforceLimits()
             val now = System.currentTimeMillis()
             val sample = reader.read()
             val config = settings.toConfig()
@@ -356,6 +388,43 @@ class MonitoringService : LifecycleService() {
         WarningCardOverlay.show(this, warning, id)
     }
 
+    /** Turns volume (with headphones) and brightness back down to the limits the user committed to. */
+    private fun enforceLimits() {
+        val s = settings
+        if (!s.monitoringEnabled) return
+        if (s.volumeLimitEnabled) {
+            val tried = runCatching { audioReader?.capVolume(s.volumeLimitPercent) }.getOrNull()
+            if (tried != null) onLimitHeld(LimitKind.VOLUME, s.volumeLimitPercent, tried)
+        }
+        if (s.brightnessLimitEnabled) {
+            val tried = eyesReader?.capBrightness(s.brightnessLimitPercent)
+            if (tried != null) onLimitHeld(LimitKind.BRIGHTNESS, s.brightnessLimitPercent, tried)
+        }
+    }
+
+    private fun onLimitHeld(kind: LimitKind, limit: Int, tried: Int) {
+        // The limit is always held; the card (and log line) at most once per signal every 15 s.
+        val n = nudger.onHeld(kind, SystemClock.elapsedRealtime()) ?: return
+        val volume = kind == LimitKind.VOLUME
+        lifecycleScope.launch {
+            log(
+                EventKind.LIMIT_HELD,
+                "${if (volume) "volume" else "brightness"} held at $limit% (tried $tried%)",
+                volumePercent = if (volume) tried else null,
+                signal = if (volume) Signal.EARS else Signal.EYES,
+            )
+        }
+        val power = getSystemService(PowerManager::class.java)
+        val keyguard = getSystemService(KeyguardManager::class.java)
+        if (!power.isInteractive || keyguard.isKeyguardLocked) return
+        val message = Limits.line(kind, limit, n)
+        if (Permissions.canDrawOverlays(this)) {
+            WarningCardOverlay.show(this, LimitNudge(kind, limit, tried, message, settings.demoMode), 0L)
+        } else {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private suspend fun log(
         kind: String,
         message: String,
@@ -377,6 +446,11 @@ class MonitoringService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        if (listening) {
+            unregisterReceiver(volumeChanged)
+            contentResolver.unregisterContentObserver(brightnessChanged)
+            listening = false
+        }
         eyesReader?.setListening(false)
         WarningCardOverlay.remove(this)
         LiveStatus.update { Live(running = false) }
@@ -396,6 +470,7 @@ class MonitoringService : LifecycleService() {
 
     companion object {
         private const val TAG = "MonitoringService"
+        private const val VOLUME_CHANGED_ACTION = "android.media.VOLUME_CHANGED_ACTION"
         const val TICK_MS = 1_000L
         const val READING_MS = 10_000L
         const val EXTRA_REASON = "reason"
