@@ -24,7 +24,7 @@ Built for the student or developer who codes or studies for hours with music in 
   - no card while the screen is off or locked.
 - **Dashboard:** live Ears and Eyes status, today's patterns, and a System Log of meaningful events (monitoring started, warnings, volume back under the threshold).
 - **History:** every listening session and warning, with time, signal, reading, duration/context and severity.
-- **Trends:** Ears volume over time with the 80% line marked, plus minutes above it per day, for a day or a week. With too little data it says "Not enough data yet" instead of showing sample data.
+- **Trends:** volume or brightness over time for today, a week, a month or 6 months, with the 80% volume line or the 70% brightness line marked, plus the minutes over it per day or week. With too little data it says "Not enough data yet" instead of showing sample data.
 - **Patterns:** today's high-volume stretches and minutes, plus an upward trend once there are 4 listening days (the 2 latest days average at least 5 points above the 2 before).
 - **Settings:** the thresholds and timers, Eyes on/off, monitoring on/off, and **Demo mode**.
 - **Keeps working:** a foreground service checks every second and saves a reading every 10 seconds. It resumes on its own after a phone restart or an app update.
@@ -67,15 +67,15 @@ Kotlin, Jetpack Compose and Material 3, with a single activity. The pieces:
 
 | Piece | Where | Role |
 | --- | --- | --- |
-| Rules | `rules/` | Plain Kotlin with no Android imports (`EarsRuleEngine`, `EyesRuleEngine`, `Patterns`), so the rules can be unit-tested and reused later |
+| Rules | `rules/` | Plain Kotlin with no Android imports (`EarsRuleEngine`, `EyesRuleEngine`, `Patterns`, `TrendBuckets`), so the rules can be unit-tested and reused later |
 | Monitoring service | `monitor/MonitoringService.kt` | A foreground service (`specialUse`) running a 1-second loop: read the sensors, run the rules, show cards, save readings and events |
 | Readers | `monitor/AudioReader.kt`, `monitor/EyesReader.kt` | Headphone output, volume and playback from `AudioManager`; brightness setting and light sensor |
 | Warning card | `overlay/` | A Compose card in a `TYPE_APPLICATION_OVERLAY` window, with spring-drop and swipe-to-dismiss |
 | Resume | `monitor/BootReceiver.kt` | Restarts monitoring after `BOOT_COMPLETED` and `MY_PACKAGE_REPLACED` if it was on |
-| Data | `data/` | Room (`readings`, `listening_sessions`, `events`) and DataStore settings |
+| Data | `data/` | Room (`readings`, `brightness_readings`, `listening_sessions`, `events`) and DataStore settings |
 | Screens | `ui/` | Onboarding, Dashboard, Trends (a hand-drawn Canvas chart), History, Insight, Settings |
 
-There are 35 unit tests for the rules in `app/src/test/`: 17 Ears, 12 Eyes and 6 Patterns.
+There are 38 unit tests for the rules in `app/src/test/`: 17 Ears, 12 Eyes, 6 Patterns and 3 Trends.
 
 ## Known limitations
 
@@ -83,7 +83,7 @@ There are 35 unit tests for the rules in `app/src/test/`: 17 Ears, 12 Eyes and 6
 - **Android only:** iOS doesn't allow cards over other apps.
 - **Battery managers can stop background work:** Samsung's sleeping apps, for example. The app shows `STOPPED` honestly rather than pretending.
 - **Not counted while Android pauses the loop:** if Android pauses monitoring (Doze), the missed time isn't counted. It may under-count, but never over-counts.
-- **Not built yet:** Eyes charts and multi-day Eyes patterns, device temperature (the Device card is a placeholder), and clearing history.
+- **Not built yet:** a room-light chart and multi-day Eyes patterns, device temperature (the Device card is a placeholder), and clearing history.
 
 ## How it was planned and built
 

@@ -232,7 +232,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
     - With too little data: "Not enough data yet."
   Why now: it reads the readings and events recorded since step 3, so it's built on real data. It's the last product feature in the PRD.
   PRD ref: `prd.md > Patterns`, `prd.md > Trends`, `prd.md > States and Boundaries` (First use / no data)
-  Spec ref: Components: `Patterns`, `Trends Screen and Ears Chart`, `Dashboard`, `Room Database`.
+  Spec ref: Components: `Patterns`, `Trends Screen and Trend Chart` (named `Trends Screen and Ears Chart` until slice 9), `Dashboard`, `Room Database`.
   Build:
   - **`rules/Patterns.kt` and `PatternsTest`:** the today summary, and the 4-day / 5-point rule.
   - **Room:** the daily stats query.
@@ -278,11 +278,35 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   3. Read the README as if you were a judge.
   Commit: `Resume monitoring after restart; README and failure-mode checks`
 
+- [x] **9. Trends: Volume or Brightness, over Today, Week, Month or 6 Months (added during the build)**
+  Becomes usable:
+  - **Signal toggle** `[VOLUME | BRIGHTNESS]`: Brightness shows the screen brightness with the 70% line, plus minutes bright in a dim room.
+  - **Range toggle** `[TODAY | WEEK | MONTH | 6 MONTHS]`: today's readings, one point per day for 7 or 30 days, or one point per week for 26 weeks.
+  - **Brightness history:** recorded every 10 s while Eyes is on and the screen is on and unlocked.
+  Why now: your request after slice 8, with the deadline close. It builds on the readings from slice 3 and on Eyes from slice 5, so it only adds a table, a recorder and the chart views.
+  PRD ref: `prd.md > Trends`, `prd.md > States and Boundaries` (First use / no data)
+  Spec ref: Components: `Trends Screen and Trend Chart`, `Room Database`, `Monitoring Service`. Plus `spec.md > Data Model`.
+  Build:
+  - **Room v3:** `brightness_readings`, `BrightnessDao` and a hand-written `MIGRATION_2_3`.
+  - **Service:** each tick adds up screen-on time, brightness, bright-in-dim time and lux; a row is saved every 10 s on its own timer.
+  - **`rules/TrendBuckets.kt` and `TrendBucketsTest`:** daily and weekly buckets, weighted by active time.
+  - **`TrendsScreen`:** the two segmented toggles and the four ranges. `EarsChart.kt` is renamed `TrendChart.kt`, and `MinutesBars` drops the per-bar numbers when there are many bars.
+  Verify (mechanical):
+  1. `./gradlew assembleDebug testDebugUnitTest`: 38 tests pass.
+  2. The migration SQL matches Room's generated `CREATE TABLE`.
+  3. `adb install -r` over the existing data: `user_version` is 3 and every old row is still there.
+  4. After a short bright-screen stretch, take screenshots of all 8 toggle combinations and check the values against the pulled database.
+  Learner check:
+  1. Open Trends and switch between Volume and Brightness.
+  2. Try Today, Week, Month and 6 Months on each. Do the lines and minutes match what you did today?
+  3. Turn the brightness up in a dark room for a minute, then look at Brightness · Today.
+  Commit: `Trends: volume or brightness over today, week, month and 6 months`
+
 ## Hands-on Checkpoints
 
 - [x] Early usable behavior explored: after slice 2. You try the card over a music app in Demo mode, while feedback can still change the card's look, wording, timing, and the remaining steps.
   - Done with real wired headphones: the card fired at 93% after 1 minute. Feedback: the card should drop vertically from the status bar with a buoyant bounce. Changed to a spring drop; a frame-by-frame screen recording confirmed the overshoot and bob.
-- [ ] Final kick-the-tires exploration and feedback completed: after slice 8, the full core journey from a fresh install.
+- [ ] Final kick-the-tires exploration and feedback completed: after slice 9, the full core journey from a fresh install.
 
 ## Final Review
 
@@ -331,3 +355,13 @@ Activity mode: [not started]
   - Volume has 15 steps (0–15), as the spec assumed.
   - Notifications were already granted, so the deny path relies on the slice 2 notice check.
   - `adb reboot` wasn't run without your OK. Your learner check (restart the phone) covers the boot path; the receiver logs `monitoring resumed (boot)`.
+- **Trends toggles added during the build** (your request after slice 8): a Volume/Brightness toggle and Today/Week/Month/6 Months ranges, added as slice 9. The final kick-the-tires checkpoint moves to after slice 9.
+  - Brightness had no history, so Room went to v3 with a new `brightness_readings` table. The migration only creates the table. Its SQL matches Room's generated schema, and installing over the phone's data kept every row (`user_version` 3: events 41, sessions 8 and readings 382 all still there).
+  - Brightness is recorded only while Eyes is on and the screen is on and unlocked: the same consent and gates as the Eyes card.
+  - 6 Months uses 26 one-week points rather than 182 daily ones, so the chart stays readable.
+  - `EarsChart.kt` became `TrendChart.kt`, since it now draws both signals. The spec heading is now `Trends Screen and Trend Chart`.
+  - Verified on the A03:
+    - about 50 s at 100% brightness in a 3-lux room showed as a spike over the 70% line;
+    - Brightness · Today read `SCREEN ON: 3 min · AVERAGE BRIGHTNESS: 35%`, the same as the database (50 s bright in a dim room, so `0 min`);
+    - Volume showed 42 min above 80% on every range, matching `readings`.
+  - Updated `scope.md`, `prd.md > Trends` (plus Product Decisions and Deferred), `spec.md` (Trends, Monitoring Service, Room, Data Model, File Structure, What Was Simplified) and the README.

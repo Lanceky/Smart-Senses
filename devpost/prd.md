@@ -35,7 +35,7 @@ Source: `scope.md > The Core Loop`, `scope.md > What "Working" Looks Like`.
   3. **Eyes card:** screen brightness % (auto or manual), room light in lux (DIM or LIT), and the bright-in-dim timer. While Eyes is off, it's a compact `EYES · OFF` row with **Turn on**. The **Device card** stays small: "coming later."
   4. **Patterns:** short, plain-language observations from recorded listening (scope: "shown on the dashboard").
   5. **System log:** a small terminal-style feed of meaningful events, such as monitoring started or a warning triggered.
-- **Trends:** one Ears chart (see `Trends`).
+- **Trends:** a Volume or Brightness chart for Today, Week, Month or 6 Months (see `Trends`).
 - **History:** the event list (see `History`).
 - **Settings:** Ears → Warning thresholds, Eyes → Bright screen in a dim room, Demo mode, and the monitoring on/off control.
 - **Insight:** opened by tapping a warning card. It shows why the warning fired and offers **Snooze 1 hour**.
@@ -122,9 +122,10 @@ Source: `scope.md > The POC Boundary` ("pattern detection over that recorded dat
 - [ ] Every pattern comes from real recorded readings; there is no sample data.
 
 ### Trends
-Source: `scope.md > Later` (full charts stay later); this one minimal chart was added by the learner during the PRD.
-- [ ] One Ears chart shows volume over time, a marked line at the configured threshold (80% by default), and daily minutes above it.
-- [ ] **Day** and **Week** filters change the time window.
+Source: `scope.md > Later` (full charts stay later). The learner added a minimal Ears chart during the PRD, then the brightness toggle and longer ranges during the build.
+- [ ] A **Volume / Brightness** toggle picks the signal. The chart shows it over time with its line marked (the volume threshold, 80% by default, or the Eyes brightness level, 70% by default), plus the minutes over that line: at or above the volume threshold, or bright in a dim room.
+- [ ] **Today**, **Week**, **Month** and **6 Months** change the window: today's 10-second readings, one point per day for 7 or 30 days, or one point per week for 26 weeks.
+- [ ] Brightness is recorded only while Eyes is on and the screen is on and unlocked.
 - [ ] With too few readings, the chart area shows "Not enough data yet."
 
 ### Eyes: Bright Screen in a Dim Room
@@ -172,7 +173,7 @@ Source: `scope.md > Open for the PRD` ("how the demo triggers a real warning wit
 - **Onboarding has no permission dumping, is privacy first, and has no dead ends.** Skipped permissions never block the app.
 - **The dashboard is Ears-first.** Eyes sits under it, and Device stays a placeholder until it's built.
 - **Patterns are rule-based comparisons with no medical claims.**
-- **Trends starts minimal:** one Ears chart, with day/week filters and an empty state.
+- **Trends stays simple:** one chart at a time (Volume or Brightness), Today/Week/Month/6 Months, and an empty state. It started as one Ears chart with Day/Week; the brightness toggle and longer ranges were added during the build at your request.
 - **Assumptions to confirm:**
   - Copy for the red and daily cards reuses your earlier wording: red ends "Lower it to protect your hearing," and daily ends "Give your ears a break."
   - A red warning replaces amber for the same loud stretch.
@@ -200,11 +201,12 @@ Order follows your scope priority: "make the first milestone a complete, working
    - Trends
    - The circuit-eye logo as the launcher icon
 3. **Added during the build:** Eyes, a bright screen in a dim room (your request after the Ears flow worked).
+4. **Added during the build:** the Trends Volume/Brightness toggle and the Month and 6 Months ranges (your request after slice 8).
 
 ## Deferred From the POC
 - **Eyes extras:** Eyes patterns over several days (such as a late-night habit) and Eyes-specific advice (`scope.md > Later`). The Eyes card, rule, History rows and its Insight (the shared page) are built.
 - **Device/Heat (temperature, thermal status)**, including the charging-heat pattern (`scope.md > Later`).
-- **Brightness and temperature charts in Trends**, which arrive with those signals.
+- **Temperature and room-light charts in Trends.** Temperature arrives with Device/Heat. Volume and brightness charts are built.
 - **Data controls such as clearing history** (`scope.md > Later`).
 
 ## Possible Later Enhancements

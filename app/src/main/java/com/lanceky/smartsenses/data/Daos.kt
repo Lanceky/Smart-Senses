@@ -32,6 +32,26 @@ interface ReadingDao {
 }
 
 @Dao
+interface BrightnessDao {
+    @Insert
+    suspend fun insert(reading: BrightnessReading): Long
+
+    @Query("SELECT * FROM brightness_readings WHERE epochDay = :day ORDER BY time")
+    fun observeDay(day: Long): Flow<List<BrightnessReading>>
+
+    /**
+     * Per day, in the same DayStat shape as volume: avgVolume holds the screen-on-weighted average brightness,
+     * highMs the time bright in a dim room, playingMs the screen-on time.
+     */
+    @Query(
+        """SELECT epochDay, SUM(brightnessPercent * screenOnMs) * 1.0 / SUM(screenOnMs) AS avgVolume,
+           SUM(brightInDimMs) AS highMs, SUM(screenOnMs) AS playingMs, COUNT(*) AS readings
+           FROM brightness_readings WHERE epochDay >= :fromDay AND screenOnMs > 0 GROUP BY epochDay ORDER BY epochDay"""
+    )
+    fun observeDailyStats(fromDay: Long): Flow<List<DayStat>>
+}
+
+@Dao
 interface SessionDao {
     @Insert
     suspend fun insert(session: ListeningSession): Long

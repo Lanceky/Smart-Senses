@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.lanceky.smartsenses.SmartSensesApp
+import com.lanceky.smartsenses.data.BrightnessReading
 import com.lanceky.smartsenses.data.Event
 import com.lanceky.smartsenses.data.EventKind
 import com.lanceky.smartsenses.data.ListeningSession
@@ -40,6 +41,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlin.math.roundToInt
 
 /** The foreground service that keeps watching headphone volume while other apps are open. */
 class MonitoringService : LifecycleService() {
@@ -57,6 +59,15 @@ class MonitoringService : LifecycleService() {
     private var pendVolumeMs = 0L // volume % × ms, for a play-time-weighted average
     private var pendPeak = 0
     private var lastFlushAt = 0L
+
+    // The brightness reading being collected (Eyes on, screen on and unlocked), saved every 10 s for Trends.
+    private var eyesOnMs = 0L
+    private var eyesBrightnessMs = 0L // brightness % × ms
+    private var eyesDimMs = 0L
+    private var eyesLuxSum = 0.0
+    private var eyesLuxCount = 0
+    private var eyesTickAt = 0L
+    private var eyesFlushAt = 0L
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
@@ -109,6 +120,8 @@ class MonitoringService : LifecycleService() {
         val keyguard = getSystemService(KeyguardManager::class.java)
         var lastOutput: Output? = null
         lastFlushAt = SystemClock.elapsedRealtime()
+        eyesTickAt = lastFlushAt
+        eyesFlushAt = lastFlushAt
         while (lifecycleScope.isActive) {
             val now = System.currentTimeMillis()
             val sample = reader.read()
@@ -160,6 +173,16 @@ class MonitoringService : LifecycleService() {
             )
             val b = eyesSample.brightnessPercent
             val lux = eyesSample.lux?.toInt()
+            val eyesNow = SystemClock.elapsedRealtime()
+            val eyesDelta = (eyesNow - eyesTickAt).coerceIn(0L, EarsConfig.MAX_DELTA_MS)
+            eyesTickAt = eyesNow
+            if (eyesConfig.enabled && gates.screenUsable) {
+                eyesOnMs += eyesDelta
+                eyesBrightnessMs += b.toLong() * eyesDelta
+                if (eyesConfig.isBrightInDim(eyesSample)) eyesDimMs += eyesDelta
+                eyesSample.lux?.let { eyesLuxSum += it; eyesLuxCount++ }
+            }
+            if (eyesNow - eyesFlushAt >= READING_MS) flushBrightness(now)
             if (eyes.started) {
                 log(EventKind.EYES_TIMER_STARTED, "screen $b% in dim light ($lux lux): eyes timer started", signal = Signal.EYES)
             }
@@ -251,6 +274,23 @@ class MonitoringService : LifecycleService() {
             )
         )
         app.db.sessions().update(updated)
+    }
+
+    /** Saves the last 10 s of screen-on time as a brightness reading. Screen-off time never makes a row. */
+    private suspend fun flushBrightness(now: Long) {
+        eyesFlushAt = SystemClock.elapsedRealtime()
+        val on = eyesOnMs
+        if (on <= 0) return
+        val reading = BrightnessReading(
+            time = now,
+            epochDay = LocalDate.now().toEpochDay(),
+            brightnessPercent = ((eyesBrightnessMs + on / 2) / on).toInt(),
+            lux = if (eyesLuxCount > 0) (eyesLuxSum / eyesLuxCount).roundToInt() else null,
+            screenOnMs = on,
+            brightInDimMs = eyesDimMs,
+        )
+        eyesOnMs = 0; eyesBrightnessMs = 0; eyesDimMs = 0; eyesLuxSum = 0.0; eyesLuxCount = 0
+        app.db.brightness().insert(reading)
     }
 
     private suspend fun openSession(now: Long, output: Output) {
@@ -345,6 +385,7 @@ class MonitoringService : LifecycleService() {
         // The loop's scope is cancelled with the service; save the last reading and close the session on the app's scope.
         app.appScope.launch(Dispatchers.Main) {
             flushReading(now)
+            flushBrightness(now)
             closeSession(now)
             app.db.events().insert(
                 Event(time = System.currentTimeMillis(), kind = EventKind.MONITORING_STOPPED, message = "monitoring stopped", demoMode = demo)

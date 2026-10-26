@@ -268,6 +268,7 @@ File: `monitor/MonitoringService.kt` (a `LifecycleService`).
   - A connect opens a session.
   - A disconnect closes it. A session with no playing time is deleted.
 - **Readings:** every 10 s, if any playing time accumulated, insert a `readings` row and add to the session's totals. Also flush on a disconnect or stop.
+- **Brightness readings** (added with the Trends toggles): while Eyes is on and the screen is usable, each tick adds its time (clamped to 5 s, like Ears), brightness × time, bright-in-dim time and the lux sample. Every 10 s, on its own timer, a `brightness_readings` row is written if there was any screen-on time. Also flushed in `onDestroy`.
 - **When the engine returns a warning:**
   1. Insert a `WARNING` event and get its id.
   2. Raise the session's `maxSeverity`.
@@ -278,7 +279,7 @@ File: `monitor/MonitoringService.kt` (a `LifecycleService`).
 - A new `capResetAt` calls `engine.resetCooldownsAndCap()`.
 - `monitoringEnabled = false` calls `stopSelf()`.
 
-**`onDestroy`:** flush, close the session, log `monitoring stopped`, set `LiveStatus.running = false`, and remove any card.
+**`onDestroy`:** flush both readings, close the session, log `monitoring stopped`, set `LiveStatus.running = false`, and remove any card.
 
 PRD ref: `prd.md > Background Monitoring`, `prd.md > Warning Rules`.
 
@@ -454,7 +455,7 @@ File: `monitor/BootReceiver.kt`. Exported. It filters `BOOT_COMPLETED` and `MY_P
 Resolves `prd.md > Open Questions` #2: monitoring resumes automatically after a phone restart (learner's decision).
 
 ### Room Database
-Files: `data/Entities.kt`, `data/Daos.kt`, `data/AppDatabase.kt`. Tables are in **Data Model**. Version 2 with `exportSchema = false`. `MIGRATION_1_2` adds the Eyes columns to `events` with `ALTER TABLE`, so existing history is kept and old rows become `EARS`.
+Files: `data/Entities.kt`, `data/Daos.kt`, `data/AppDatabase.kt`. Tables are in **Data Model**. Version 3 with `exportSchema = false`. `MIGRATION_1_2` adds the Eyes columns to `events` with `ALTER TABLE`, so existing history is kept and old rows become `EARS`. `MIGRATION_2_3` creates the empty `brightness_readings` table and its `epochDay` index, with SQL identical to Room's generated schema.
 
 - **`ReadingDao`**
   - `insert`
@@ -474,6 +475,10 @@ Files: `data/Entities.kt`, `data/Daos.kt`, `data/AppDatabase.kt`. Tables are in 
   - `warningsSince(from)`
   - `lastWarningTime(rule, from)`
   - `countKindSince(kind, from)`: a Flow
+- **`BrightnessDao`** (added with the Trends toggles)
+  - `insert`
+  - `observeDay(day)`
+  - `observeDailyStats(fromDay)`: per day, the screen-on-weighted average brightness, `SUM(brightInDimMs)`, `SUM(screenOnMs)` and the count, in the same `DayStat` shape as volume
 
 Screens use the `Flow` queries, so Room pushes new rows to them.
 
@@ -592,20 +597,24 @@ File: `ui/history/HistoryScreen.kt`. Shows warnings (`events` of kind `WARNING`)
 
 PRD ref: `prd.md > History`.
 
-### Trends Screen and Ears Chart
-Files: `ui/trends/TrendsScreen.kt`, `ui/trends/EarsChart.kt` (Compose `Canvas`, no library).
+### Trends Screen and Trend Chart
+Files: `ui/trends/TrendsScreen.kt`, `ui/trends/TrendChart.kt` (Compose `Canvas`, no library; it was `EarsChart.kt` until brightness joined), `rules/TrendBuckets.kt` (plain Kotlin).
 
-- **Filter:** `[DAY] [WEEK]` toggle.
-- **Day view:**
-  - Today's readings as a neon line of volume over time.
-  - The x-axis runs from the first reading to now and spans at least 10 minutes.
-  - A dashed amber line at the configured threshold, and a 0–100% y-axis with a few labels.
-  - Below it: `TODAY ABOVE 80%: 12 min`.
-- **Week view:**
-  - The last 7 days: each day's average volume as a point-line on the same axes, with the threshold line.
-  - Below it: small bars of minutes above the threshold per day, labeled by weekday.
-- **Empty:** fewer than 2 readings in the window shows `Not enough data yet.`
-- **Built:** a pause of more than 25 s breaks the Day line, so paused time isn't drawn as listening. Day also shows `LISTENED` and `AVERAGE VOLUME`. Week's bars are `MinutesBars` in `EarsChart.kt`.
+- **Toggles:** two segmented rows, `[VOLUME | BRIGHTNESS]` and `[TODAY | WEEK | MONTH | 6 MONTHS]`. They're weighted rows, so four options fit a 360 dp screen.
+- **Signal:**
+  - Volume: `readings`, the line at `thresholdPercent` (80), minutes at or above it, `LISTENED` and `AVERAGE VOLUME`.
+  - Brightness: `brightness_readings`, the line at `eyesBrightnessPercent` (70), minutes bright in a dim room, `SCREEN ON` and `AVERAGE BRIGHTNESS`.
+- **Today:**
+  - Today's 10-second readings as a neon line. The x-axis runs from the first reading to now and spans at least 10 minutes.
+  - A dashed amber line at the signal's level, and a 0–100% y-axis with a few labels.
+  - A gap of more than 25 s (paused music, screen off) breaks the line, so that time isn't drawn.
+  - Below it: `TODAY ABOVE 80%: 12 min` or `TODAY BRIGHT IN A DIM ROOM: 3 min`.
+- **Week and Month:** one point per day for 7 or 30 days (the day's average, weighted by active time), with bars of minutes over the line per day. Week labels every weekday and numbers each bar; Month labels about one date a week and drops the per-bar numbers so 30 bars stay readable.
+- **6 Months:** 26 one-week buckets ending today, each a time-weighted average with summed minutes. Month names mark where a new month starts.
+- **`TrendBuckets.of(stats, today, count, daysPerBucket)`** groups the daily stats. Days with no active time are ignored, and an empty bucket has no point.
+- **Totals:** every range shows the minutes over the line in total, the active minutes and the weighted average, plus how many days or weeks have data.
+- **Empty:** fewer than 2 readings in the window shows `Not enough data yet.` For Brightness with Eyes off, it says to turn Eyes on.
+- **Unit tests** (`TrendBucketsTest`, 3): daily buckets end today with gaps left empty; a weekly bucket's weighted average and summed minutes; days outside the window or with no active time are ignored.
 
 PRD ref: `prd.md > Trends`.
 
@@ -688,6 +697,21 @@ Everything lives on the phone, in the app's private storage. There's no account,
 - Written by the service only when `playingMs > 0`, so paused time and the speaker never create rows.
 - Read by Trends, Patterns, and the engine's seeding of today's loud time.
 
+**`brightness_readings`**: one row per 10 seconds of screen-on time while Eyes is on. Added in v3, with the Trends toggles.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | Long | Primary key, auto-generated |
+| `time` | Long | Epoch ms |
+| `epochDay` | Long | Local day (indexed) |
+| `brightnessPercent` | Int | Average brightness setting while the screen was on in the 10 s |
+| `lux` | Int? | Average room light; `null` without a light-sensor reading |
+| `screenOnMs` | Long | Screen on and unlocked |
+| `brightInDimMs` | Long | Time at or above the Eyes brightness level with the room under the dim level |
+
+- Written only while Eyes is on and only when `screenOnMs > 0`, so a locked screen or Eyes switched off never creates rows.
+- Read by Trends.
+
 **`listening_sessions`**: from headphones connected to disconnected.
 
 | Column | Type | Notes |
@@ -760,7 +784,8 @@ Smart-Senses/
 │       │   │   │   ├── EarsRuleEngine.kt      # timers, red/amber/daily rules, cooldown, cap, snooze
 │       │   │   │   ├── EyesModels.kt          # EyesSample, EyesConfig, EyesWarning (added during the build)
 │       │   │   │   ├── EyesRuleEngine.kt      # bright-in-dim timer, grace, cooldown, shared cap
-│       │   │   │   └── Patterns.kt            # today summary + 4-day upward-trend rule
+│       │   │   │   ├── Patterns.kt            # today summary + 4-day upward-trend rule
+│       │   │   │   └── TrendBuckets.kt        # day and week buckets for Trends (added with the toggles)
 │       │   │   ├── monitor/                   # the background part
 │       │   │   │   ├── MonitoringService.kt   # foreground service: 1 s loop, Room writes, overlay calls
 │       │   │   │   ├── AudioReader.kt         # headphones? volume %? playing?
@@ -772,9 +797,9 @@ Smart-Senses/
 │       │   │   │   ├── WarningCardOverlay.kt  # Appear-on-top window, OverlayOwner, show/hide/tap
 │       │   │   │   └── WarningCard.kt         # the Compose card (amber/red)
 │       │   │   ├── data/
-│       │   │   │   ├── Entities.kt            # Reading, ListeningSession, Event
-│       │   │   │   ├── Daos.kt                # ReadingDao, SessionDao, EventDao
-│       │   │   │   ├── AppDatabase.kt         # Room database v2 + MIGRATION_1_2
+│       │   │   │   ├── Entities.kt            # Reading, BrightnessReading, ListeningSession, Event
+│       │   │   │   ├── Daos.kt                # ReadingDao, BrightnessDao, SessionDao, EventDao
+│       │   │   │   ├── AppDatabase.kt         # Room database v3 + MIGRATION_1_2, MIGRATION_2_3
 │       │   │   │   └── SettingsStore.kt       # DataStore keys, defaults, setters
 │       │   │   ├── permissions/
 │       │   │   │   └── Permissions.kt         # status checks + Settings intents (FIX links)
@@ -784,7 +809,7 @@ Smart-Senses/
 │       │   │       ├── components/Console.kt  # Panel, CapsLabel, SeverityTag, StatusDot, ConsoleButton
 │       │   │       ├── onboarding/OnboardingFlow.kt
 │       │   │       ├── dashboard/DashboardScreen.kt  # top bar, notices, Ears card, Patterns, System Log
-│       │   │       ├── trends/{TrendsScreen,EarsChart}.kt
+│       │   │       ├── trends/{TrendsScreen,TrendChart}.kt
 │       │   │       ├── history/HistoryScreen.kt
 │       │   │       ├── insight/InsightScreen.kt
 │       │   │       └── settings/SettingsScreen.kt
@@ -795,7 +820,8 @@ Smart-Senses/
 │       └── test/java/com/lanceky/smartsenses/rules/
 │           ├── EarsRuleEngineTest.kt      # JVM tests for every rule transition
 │           ├── EyesRuleEngineTest.kt      # JVM tests for the Eyes rule
-│           └── PatternsTest.kt
+│           ├── PatternsTest.kt
+│           └── TrendBucketsTest.kt
 ├── gradle/
 │   ├── libs.versions.toml          # all versions from Stack in one place
 │   └── wrapper/                    # Gradle 9.3.1 wrapper
@@ -868,11 +894,11 @@ The `agent/` folder is the skill pack's copy for another agent, so it's committe
 - **Hand-drawn Canvas chart** instead of a chart library (learner's choice): one simple chart, no dependency. The fuller version would bring zoom, tooltips, and more chart types.
 - **System monospace font and Unicode glyphs** instead of a bundled font and icon pack: no assets and readable everywhere. The fuller version would bundle a font such as JetBrains Mono.
 - **10-second readings** instead of raw 1-second samples: plenty for charts, and storage stays small.
-- **Room `exportSchema = false`, no migrations:** a first-version proof of concept. A real release would export schemas and write migrations.
+- **Room `exportSchema = false`, hand-written migrations:** v1→2 (Eyes columns) and v2→3 (brightness history) were written by hand, checked against Room's generated SQL, and installed over real data on the phone. A real release would export schemas and add migration tests.
 - **Media volume % as the exposure proxy** instead of measured decibels: Android doesn't expose what reaches the ear. The UI says so.
 - **Bluetooth counts as headphones** (PRD assumption): Android can't reliably tell headphones from a Bluetooth speaker.
 - **A documented battery setting** instead of an in-app exemption request: the honest `STOPPED` status covers the gap.
-- **Ears first, Eyes minimal:** Eyes was added during the build with one rule, no red level, no Trends chart and no patterns. Device is still a placeholder (`prd.md > Deferred From the POC`).
+- **Ears first, Eyes minimal:** Eyes was added during the build with one rule, no red level and no patterns. Its brightness chart in Trends came later, with the toggles. Device is still a placeholder (`prd.md > Deferred From the POC`).
 - **Never faked:** Demo mode shortens one real timer. No sample data exists anywhere; empty states say "Not enough data yet."
 
 ## Decisions and Open Issues

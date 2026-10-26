@@ -18,6 +18,18 @@ data class Reading(
     val sessionId: Long,
 )
 
+/** One row per 10 seconds of screen-on time while Eyes is on: average brightness and room light, for Trends. */
+@Entity(tableName = "brightness_readings", indices = [Index("epochDay")])
+data class BrightnessReading(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val time: Long,
+    val epochDay: Long,
+    val brightnessPercent: Int,
+    val lux: Int?,
+    val screenOnMs: Long,
+    val brightInDimMs: Long,
+)
+
 /** From headphones connected to disconnected. endedAt == null while ongoing. */
 @Entity(tableName = "listening_sessions", indices = [Index("epochDay")])
 data class ListeningSession(

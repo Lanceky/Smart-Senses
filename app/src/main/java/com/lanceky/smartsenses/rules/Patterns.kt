@@ -2,7 +2,10 @@ package com.lanceky.smartsenses.rules
 
 import kotlin.math.roundToInt
 
-/** One day of recorded listening. Room fills it from `readings`; avgVolume is weighted by play time. */
+/**
+ * One day of recorded listening. Room fills it from `readings`; avgVolume is weighted by play time.
+ * Trends reuses the shape for brightness (see `BrightnessDao.observeDailyStats`).
+ */
 data class DayStat(
     val epochDay: Long,
     val avgVolume: Double,

@@ -24,12 +24,12 @@ import com.lanceky.smartsenses.ui.theme.Neon
 import com.lanceky.smartsenses.ui.theme.TextDim
 import kotlin.math.abs
 
-/** x is 0..1 across the window; breakBefore starts a new line segment (a pause in listening). */
-data class ChartPoint(val x: Float, val volume: Float, val breakBefore: Boolean = false)
+/** x is 0..1 across the window; value is 0–100%; breakBefore starts a new line segment (a pause or the screen off). */
+data class ChartPoint(val x: Float, val value: Float, val breakBefore: Boolean = false)
 
-/** Hand-drawn volume chart: 0–100% axis, dashed amber threshold, neon line. No chart library. */
+/** Hand-drawn volume or brightness chart: 0–100% axis, dashed amber threshold, neon line. No chart library. */
 @Composable
-fun EarsChart(
+fun TrendChart(
     points: List<ChartPoint>,
     thresholdPercent: Int,
     xLabels: List<Pair<Float, String>>,
@@ -59,11 +59,11 @@ fun EarsChart(
 
         val path = Path()
         points.forEachIndexed { i, p ->
-            val o = Offset(xOf(p.x), yOf(p.volume))
+            val o = Offset(xOf(p.x), yOf(p.value))
             if (i == 0 || p.breakBefore) path.moveTo(o.x, o.y) else path.lineTo(o.x, o.y)
         }
         drawPath(path, Neon, style = Stroke(width = 2.dp.toPx()))
-        if (dots) points.forEach { drawCircle(Neon, 3.5.dp.toPx(), Offset(xOf(it.x), yOf(it.volume))) }
+        if (dots) points.forEach { drawCircle(Neon, 3.5.dp.toPx(), Offset(xOf(it.x), yOf(it.value))) }
 
         xLabels.forEach { (f, text) ->
             val layout = measurer.measure(text, labelStyle)
@@ -78,9 +78,9 @@ private fun DrawScope.yLabel(measurer: TextMeasurer, text: String, style: TextSt
     drawText(layout, topLeft = Offset(left - layout.size.width - 4.dp.toPx(), y - layout.size.height / 2f))
 }
 
-/** Minutes at or above the threshold per day, as small console bars. */
+/** Minutes over the line per day or week, as small console bars. Many bars: no per-bar numbers, and blank labels are skipped. */
 @Composable
-fun MinutesBars(days: List<Pair<String, Long>>, modifier: Modifier = Modifier, color: Color = Amber) {
+fun MinutesBars(days: List<Pair<String, Long>>, modifier: Modifier = Modifier, color: Color = Amber, showValues: Boolean = true) {
     val measurer = rememberTextMeasurer()
     val style = TextStyle(color = TextDim, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
     val max = (days.maxOfOrNull { it.second } ?: 0L).coerceAtLeast(1L)
@@ -94,10 +94,15 @@ fun MinutesBars(days: List<Pair<String, Long>>, modifier: Modifier = Modifier, c
             val h = if (minutes == 0L) 1.dp.toPx() else (minutes.toFloat() / max * maxH).coerceAtLeast(3.dp.toPx())
             val w = colW * 0.45f
             drawRect(if (minutes == 0L) Border else color, Offset(cx - w / 2, base - h), androidx.compose.ui.geometry.Size(w, h))
-            val v = measurer.measure("$minutes", style.copy(color = if (minutes == 0L) TextDim else color))
-            drawText(v, topLeft = Offset(cx - v.size.width / 2f, base - h - v.size.height - 2.dp.toPx()))
-            val l = measurer.measure(label, style)
-            drawText(l, topLeft = Offset(cx - l.size.width / 2f, base + 3.dp.toPx()))
+            if (showValues) {
+                val v = measurer.measure("$minutes", style.copy(color = if (minutes == 0L) TextDim else color))
+                drawText(v, topLeft = Offset(cx - v.size.width / 2f, base - h - v.size.height - 2.dp.toPx()))
+            }
+            if (label.isNotEmpty()) {
+                val l = measurer.measure(label, style)
+                val x = (cx - l.size.width / 2f).coerceIn(0f, size.width - l.size.width)
+                drawText(l, topLeft = Offset(x, base + 3.dp.toPx()))
+            }
         }
     }
 }
