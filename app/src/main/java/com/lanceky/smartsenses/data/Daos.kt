@@ -32,6 +32,9 @@ interface SessionDao {
 
     @Query("SELECT * FROM listening_sessions WHERE endedAt IS NULL")
     suspend fun openSessions(): List<ListeningSession>
+
+    @Query("SELECT * FROM listening_sessions ORDER BY startedAt DESC, id DESC")
+    fun observeAll(): Flow<List<ListeningSession>>
 }
 
 @Dao
@@ -41,6 +44,9 @@ interface EventDao {
 
     @Query("SELECT * FROM events ORDER BY time DESC, id DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<Event>>
+
+    @Query("SELECT * FROM events WHERE kind = 'WARNING' ORDER BY time DESC, id DESC")
+    fun observeWarnings(): Flow<List<Event>>
 
     @Query("SELECT COUNT(*) FROM events WHERE kind = 'WARNING' AND time >= :since")
     suspend fun warningCountSince(since: Long): Int

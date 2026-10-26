@@ -106,7 +106,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   What did you notice, and what would you change?
   Commit: `Warning card over other apps: Ears rule engine, Demo mode, Settings`
 
-- [ ] **3. Every warning and listening session waits in History, even after a restart**
+- [x] **3. Every warning and listening session waits in History, even after a restart**
   Becomes usable: the History tab lists, newest first:
   - **warnings:** time, `EARS`, volume %, how long, output, `▲ CAUTION` or `■ DANGER`, and a `DEMO` tag;
   - **listening sessions:** start time, peak volume, minutes listened, output, highest severity, and `ongoing` while still open.
@@ -280,3 +280,4 @@ Activity mode: [not started]
 - **Slice 2 learner check, step 3** (re-trigger the card). The plan said lower the volume, raise it, and wait a minute, but the 10-minute per-rule cooldown (`prd.md > Warning Rules`, unchanged in Demo mode) blocks a second card that soon. The step now turns Demo mode off and on, which resets cooldowns and today's card count as the PRD already specifies.
 - **Slice 2 mechanical verification without headphones.** None were connected, so steps 5–8 ran on a temporary build that reported wired headphones and playback (never committed). The card appeared 60 s after the timer started, auto-hid, dismissed on swipe up, and the `WARNING` and `volume back under threshold` lines were logged. Real headphones are covered by the learner check.
 - **Warning card motion** (learner feedback at the slice 2 checkpoint). The card used to slide and fade in. It now drops straight down from under the status bar on a bouncy spring: it overshoots about 20 dp, bobs back and settles in under a second. The exit is still a quick slide up. Updated `spec.md > Warning Card Overlay` and the `prd.md > The Warning Card` criterion.
+- **Slice 3 mechanical verification without playing audio.** A wired headset was plugged in but paused, so nothing was played into it. A temporary build (never committed) mapped volume steps to states: 0 meant unplugged, 7 meant plugged in and paused, anything else meant playing. Results: a paused-only session was deleted; a 78 s session matched its 9 readings exactly; a warning raised its session to CAUTION; History survived a force-stop. The real build then detected the wired headset correctly.

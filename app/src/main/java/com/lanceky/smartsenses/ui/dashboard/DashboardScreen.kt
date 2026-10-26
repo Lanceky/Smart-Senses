@@ -188,6 +188,7 @@ private fun EarsCard(settings: Settings, live: Live) {
             else -> CapsLabel("PAUSED: timers hold")
         }
         if (running) {
+            if (live.output != null) CapsLabel("LISTENING: ${live.sessionListeningMs / MINUTE_MS} min")
             CapsLabel("TODAY ABOVE ${settings.thresholdPercent}%: ${live.todayHighMs / MINUTE_MS} min")
         }
         Spacer(Modifier.height(8.dp))
