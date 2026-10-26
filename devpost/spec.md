@@ -93,7 +93,7 @@ PRD ref: `prd.md > The Core Journey`.
 | SDK levels | compileSdk **36**, targetSdk **36**, minSdk **26** | 36 is installed. 26 (Android 8) is where today's Appear-on-top window type starts. The A03 runs 33. | — |
 | Readings and history | Room **2.8.5** + KSP **2.3.12** | Learner's choice. Live queries refresh screens. KSP generates Room's code (2.3.10+ supports Kotlin 2.4.0). | https://developer.android.com/training/data-storage/room · https://kotlinlang.org/docs/ksp-overview.html |
 | Settings | DataStore Preferences **1.1.7** | Learner's choice; already cached, so no download | https://developer.android.com/topic/libraries/architecture/datastore |
-| Service + lifecycles | `lifecycle-service` and `lifecycle-runtime-compose` **2.11.0**, `activity-compose` **1.13.0**, `core-ktx` **1.18.0** | `LifecycleService` provides coroutines and the lifecycle the overlay needs. All of these build with SDK 36. | https://developer.android.com/reference/androidx/lifecycle/LifecycleService |
+| Service + lifecycles | `lifecycle-service` and `lifecycle-runtime-compose` **2.10.0**, `activity-compose` **1.13.0**, `core-ktx` **1.18.0** | `LifecycleService` provides coroutines and the lifecycle the overlay needs. All of these build with SDK 36 (lifecycle 2.11.0 needs SDK 37). | https://developer.android.com/reference/androidx/lifecycle/LifecycleService |
 | Chart | Hand-drawn Compose `Canvas` | Learner's choice: no chart library | https://developer.android.com/develop/ui/compose/graphics/draw/overview |
 | Tests | JUnit 4 on the laptop (JVM) | Tests the plain-Kotlin rules without a phone | — |
 | Deliberately none | navigation library, dependency-injection framework, icon library, network library | A simple screen switch, one app container, and text glyphs are enough for a proof of concept | — |
@@ -773,7 +773,7 @@ Smart-Senses/
 └── .gitignore                      # build outputs, local.properties, .gradle, IDE files, learner-profile.md
 ```
 
-The unused `agent/` folder is removed before the first commit.
+The `agent/` folder is the skill pack's copy for another agent, so it's committed with `.agents/` and `.claude/` (see `checklist.md > Revisions`).
 
 ## External Services and Dependencies
 
