@@ -1,0 +1,24 @@
+# Devpost Learn: keep personal learning context out of commits
+/devpost/learner-profile.md
+
+# Local credentials (a secret-free .env.example is fine to commit)
+.env
+.env.*
+!.env.example
+
+# Android / Gradle build outputs
+.gradle/
+.kotlin/
+build/
+local.properties
+captures/
+*.apk
+*.aab
+
+# IDE files
+.idea/
+*.iml
+.DS_Store
+
+# Demo recordings (uploaded separately, not committed)
+*.mp4
