@@ -37,6 +37,11 @@ class EarsRuleEngine {
         this.dailyFiredToday = dailyFiredToday
     }
 
+    /** Another signal (Eyes) showed a card: the daily cap is shared across signals. */
+    fun countOtherCard() {
+        cardsToday++
+    }
+
     /** Demo mode: earlier test runs never block a card during the recording. */
     fun resetCooldownsAndCap() {
         lastFired.clear()

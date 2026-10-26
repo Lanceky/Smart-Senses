@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lanceky.smartsenses.SmartSensesApp
 import com.lanceky.smartsenses.data.Event
 import com.lanceky.smartsenses.data.ListeningSession
+import com.lanceky.smartsenses.data.Signal
 import com.lanceky.smartsenses.rules.MINUTE_MS
 import com.lanceky.smartsenses.rules.Rule
 import com.lanceky.smartsenses.rules.Severity
@@ -122,11 +123,17 @@ private fun DayHeader(day: LocalDate) {
 private fun WarningLine(e: Event, onOpen: ((Long) -> Unit)?) {
     val severity = e.severity?.let { runCatching { Severity.valueOf(it) }.getOrNull() } ?: Severity.CAUTION
     val minutes = (e.durationMs ?: 0) / MINUTE_MS
-    val context = if (e.rule == Rule.DAILY.name) "$minutes min loud today" else "high for $minutes min"
+    val eyes = e.signal == Signal.EYES
+    val context = when {
+        eyes -> "in ${e.lux ?: 0} lux for $minutes min"
+        e.rule == Rule.DAILY.name -> "$minutes min loud today"
+        else -> "high for $minutes min"
+    }
     Line(
         time = e.time,
-        reading = "${e.volumePercent ?: 0}%",
-        context = listOfNotNull(context, e.outputType).joinToString(" · "),
+        signal = e.signal,
+        reading = "${(if (eyes) e.brightnessPercent else e.volumePercent) ?: 0}%",
+        context = listOfNotNull(context, if (eyes) null else e.outputType).joinToString(" · "),
         severity = severity,
         demo = e.demoMode,
         modifier = if (onOpen != null) Modifier.clickable { onOpen(e.id) } else Modifier,
@@ -138,6 +145,7 @@ private fun SessionLine(s: ListeningSession) {
     val severity = runCatching { Severity.valueOf(s.maxSeverity) }.getOrDefault(Severity.NORMAL)
     Line(
         time = s.startedAt,
+        signal = Signal.EARS,
         reading = "peak ${s.peakVolumePercent}%",
         context = listOfNotNull("listened ${duration(s.listeningMs)}", s.outputType, if (s.endedAt == null) "ongoing" else null)
             .joinToString(" · "),
@@ -148,11 +156,11 @@ private fun SessionLine(s: ListeningSession) {
 
 /** Two console lines: `21:04  EARS  85%  ▲ CAUTION`, then the duration and context underneath. */
 @Composable
-private fun Line(time: Long, reading: String, context: String, severity: Severity, demo: Boolean, modifier: Modifier = Modifier) {
+private fun Line(time: Long, signal: String, reading: String, context: String, severity: Severity, demo: Boolean, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ConsoleText(formatClock(time, short = true), Modifier.width(52.dp), color = TextDim)
-            ConsoleText("EARS", Modifier.width(48.dp), color = Neon)
+            ConsoleText(signal, Modifier.width(48.dp), color = Neon)
             ConsoleText(reading, Modifier.weight(1f), color = TextMain, maxLines = 1)
             ConsoleText("${severity.glyph()} ${severity.label()}", color = severity.color(), size = 12.sp)
         }

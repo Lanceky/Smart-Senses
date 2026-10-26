@@ -47,16 +47,23 @@ data class Gates(
     val screenUsable: Boolean = true,
 )
 
+/** What the floating card needs from any signal's warning. */
+interface CardWarning {
+    val severity: Severity
+    val message: String
+    val demoMode: Boolean
+}
+
 data class Warning(
     val rule: Rule,
-    val severity: Severity,
+    override val severity: Severity,
     val volumePercent: Int,
     val durationMs: Long,
-    val demoMode: Boolean,
-) {
+    override val demoMode: Boolean,
+) : CardWarning {
     val minutes: Long get() = durationMs / MINUTE_MS
 
-    val message: String
+    override val message: String
         get() = when (rule) {
             Rule.VERY_HIGH -> "EARS: Volume very high for $minutes min. Lower it to protect your hearing."
             Rule.CONTINUOUS -> "EARS: Volume high for $minutes min. Consider lowering it."

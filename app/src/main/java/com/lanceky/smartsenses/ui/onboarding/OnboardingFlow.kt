@@ -71,6 +71,7 @@ fun OnboardingFlow() {
     val steps = remember { Step.entries.filter { it != Step.NOTIFICATIONS || Build.VERSION.SDK_INT >= 33 } }
     var index by rememberSaveable { mutableIntStateOf(0) }
     var earsOn by rememberSaveable { mutableStateOf(true) }
+    var eyesOn by rememberSaveable { mutableStateOf(false) }
     val next = { index = (index + 1).coerceAtMost(steps.lastIndex) }
 
     Column(
@@ -86,11 +87,12 @@ fun OnboardingFlow() {
         }
         when (steps[index]) {
             Step.WELCOME -> Welcome(next)
-            Step.CHOOSE -> Choose(earsOn, { earsOn = it }, next)
+            Step.CHOOSE -> Choose(earsOn, { earsOn = it }, eyesOn, { eyesOn = it }, next)
             Step.NOTIFICATIONS -> NotificationsStep(next)
             Step.OVERLAY -> OverlayStep(next)
-            Step.CHECKLIST -> Checklist(earsOn) {
+            Step.CHECKLIST -> Checklist(earsOn, eyesOn && earsOn) {
                 scope.launch {
+                    app.settingsStore.setEyesEnabled(eyesOn && earsOn)
                     app.settingsStore.setMonitoringEnabled(earsOn)
                     if (earsOn) MonitoringService.start(context, MonitoringService.REASON_USER)
                     app.settingsStore.setOnboardingDone(true)
@@ -127,7 +129,7 @@ private fun ColumnScope.Welcome(onStart: () -> Unit) {
 }
 
 @Composable
-private fun Choose(earsOn: Boolean, onEars: (Boolean) -> Unit, onNext: () -> Unit) {
+private fun Choose(earsOn: Boolean, onEars: (Boolean) -> Unit, eyesOn: Boolean, onEyes: (Boolean) -> Unit, onNext: () -> Unit) {
     Title("Choose what to monitor")
     ConsolePanel("EARS · HEADPHONE VOLUME", accent = Neon, glow = if (earsOn) Neon else null, trailing = {
         Switch(
@@ -138,7 +140,17 @@ private fun Choose(earsOn: Boolean, onEars: (Boolean) -> Unit, onNext: () -> Uni
     }) {
         ConsoleText("Warns you with a card when headphone volume stays high for too long.", size = 13.sp)
     }
-    ComingLater("EYES · SCREEN BRIGHTNESS", "Will spot a bright screen in a dim room, especially late at night.")
+    ConsolePanel("EYES · SCREEN BRIGHTNESS", glow = if (eyesOn && earsOn) Neon else null, trailing = {
+        Switch(
+            checked = eyesOn && earsOn,
+            onCheckedChange = onEyes,
+            enabled = earsOn,
+            colors = SwitchDefaults.colors(checkedTrackColor = Neon, checkedThumbColor = Black, uncheckedTrackColor = Black, uncheckedBorderColor = Border),
+        )
+    }) {
+        ConsoleText("Spots a bright screen in a dim room, especially late at night. Optional: you can turn it on later.", size = 13.sp)
+        if (!earsOn) ConsoleText("Runs with monitoring: turn Ears on first.", color = TextDim, size = 12.sp)
+    }
     ComingLater("DEVICE · TEMPERATURE", "Will notice when the phone keeps running hot, especially while charging.")
     ConsoleButton("continue", onNext, Modifier.fillMaxWidth(), filled = true)
 }
@@ -199,13 +211,14 @@ private fun OverlayStep(onNext: () -> Unit) {
 }
 
 @Composable
-private fun Checklist(earsOn: Boolean, onFinish: () -> Unit) {
+private fun Checklist(earsOn: Boolean, eyesOn: Boolean, onFinish: () -> Unit) {
     val context = LocalContext.current
     val status = rememberPermissionStatus()
     Title("Setup checklist")
     ConsolePanel("READY CHECK") {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CheckRow("EARS", if (earsOn) "ON" else "OFF", earsOn)
+            CheckRow("EYES", if (eyesOn) "ON" else "OFF · turn on any time in Settings", true)
             CheckRow("NOTIFICATIONS", if (status.notifications) "GRANTED" else "MISSING", status.notifications) {
                 context.startActivity(Permissions.notificationSettingsIntent(context))
             }

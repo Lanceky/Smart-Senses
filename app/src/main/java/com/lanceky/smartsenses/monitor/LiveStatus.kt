@@ -19,6 +19,12 @@ data class Live(
     val todayHighMs: Long = 0,
     val sessionListeningMs: Long = 0,
     val status: EarsStatus = EarsStatus.NORMAL,
+    val brightnessPercent: Int = 0,
+    val autoBrightness: Boolean = false,
+    val lightSensor: Boolean = true,
+    val lux: Float? = null,
+    val brightInDimMs: Long = 0,
+    val eyesTiming: Boolean = false,
 )
 
 object LiveStatus {

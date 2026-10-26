@@ -21,6 +21,10 @@ data class Settings(
     val demoMode: Boolean = false,
     val capResetAt: Long = 0,
     val snoozeUntil: Long = 0,
+    val eyesEnabled: Boolean = false,
+    val eyesBrightnessPercent: Int = 70,
+    val eyesDimLux: Int = 20,
+    val eyesMinutes: Int = 10,
 )
 
 class SettingsStore(private val context: Context) {
@@ -33,6 +37,10 @@ class SettingsStore(private val context: Context) {
         val demoMode = booleanPreferencesKey("demoMode")
         val capResetAt = longPreferencesKey("capResetAt")
         val snoozeUntil = longPreferencesKey("snoozeUntil")
+        val eyesEnabled = booleanPreferencesKey("eyesEnabled")
+        val eyesBrightnessPercent = intPreferencesKey("eyesBrightnessPercent")
+        val eyesDimLux = intPreferencesKey("eyesDimLux")
+        val eyesMinutes = intPreferencesKey("eyesMinutes")
     }
 
     val settings: Flow<Settings> = context.settingsDataStore.data.map { it.toSettings() }
@@ -46,6 +54,10 @@ class SettingsStore(private val context: Context) {
         demoMode = this[Keys.demoMode] ?: false,
         capResetAt = this[Keys.capResetAt] ?: 0L,
         snoozeUntil = this[Keys.snoozeUntil] ?: 0L,
+        eyesEnabled = this[Keys.eyesEnabled] ?: false,
+        eyesBrightnessPercent = this[Keys.eyesBrightnessPercent] ?: 70,
+        eyesDimLux = this[Keys.eyesDimLux] ?: 20,
+        eyesMinutes = this[Keys.eyesMinutes] ?: 10,
     )
 
     suspend fun setOnboardingDone(done: Boolean) = edit { it[Keys.onboardingDone] = done }
@@ -54,6 +66,10 @@ class SettingsStore(private val context: Context) {
     suspend fun setContinuousMinutes(value: Int) = edit { it[Keys.continuousMinutes] = value.coerceIn(5, 60) }
     suspend fun setDailyMinutes(value: Int) = edit { it[Keys.dailyMinutes] = value.coerceIn(15, 240) }
     suspend fun setSnoozeUntil(time: Long) = edit { it[Keys.snoozeUntil] = time }
+    suspend fun setEyesEnabled(on: Boolean) = edit { it[Keys.eyesEnabled] = on }
+    suspend fun setEyesBrightnessPercent(value: Int) = edit { it[Keys.eyesBrightnessPercent] = value.coerceIn(50, 100) }
+    suspend fun setEyesDimLux(value: Int) = edit { it[Keys.eyesDimLux] = value.coerceIn(5, 100) }
+    suspend fun setEyesMinutes(value: Int) = edit { it[Keys.eyesMinutes] = value.coerceIn(5, 60) }
 
     /** Turning Demo mode on also resets cooldowns and today's card count (capResetAt) and clears snooze. */
     suspend fun setDemoMode(on: Boolean, now: Long = System.currentTimeMillis()) = edit {

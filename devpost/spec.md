@@ -206,7 +206,7 @@ PRD ref: `prd.md > Screens and Layout`.
 Files: `ui/onboarding/OnboardingFlow.kt`, `permissions/Permissions.kt`.
 
 - **The steps** live in a `rememberSaveable` step state: Welcome → Choose what to monitor → Notifications explainer (Android 13+ only) → Appear on top explainer → Setup checklist.
-- **Ears vs. monitoring:** Ears is the only monitor in this build. Its switch and Settings' Monitoring switch control the same `monitoringEnabled` setting. Eyes and Device cards say `COMING LATER` and have no switch.
+- **Ears vs. monitoring:** Ears is the core monitor. Its switch and Settings' Monitoring switch control the same `monitoringEnabled` setting. Eyes (added during the build) has its own switch, `eyesEnabled`, off by default; it runs inside the same service, so it's only enabled while Ears is on. The Device card says `COMING LATER` and has no switch.
 - **The notifications explainer:**
   - Its button requests `POST_NOTIFICATIONS` with `rememberLauncherForActivityResult(RequestPermission())`.
   - If Android won't show the prompt again, the button opens the app's notification settings (`Settings.ACTION_APP_NOTIFICATION_SETTINGS`).
@@ -360,6 +360,27 @@ Otherwise nothing is shown or logged. The timers keep running, so it fires on a 
 
 PRD ref: `prd.md > Warning Rules`, `prd.md > Product Decisions`.
 
+### Eyes Reader and Rule (added during the build)
+Files: `monitor/EyesReader.kt`, `rules/EyesModels.kt`, `rules/EyesRuleEngine.kt`. The rules are plain Kotlin, like Ears.
+
+- **Reader:** no permission needed.
+  - Brightness % = `Settings.System.SCREEN_BRIGHTNESS` (0–255) × 100 / 255, plus `SCREEN_BRIGHTNESS_MODE` for auto or manual. On the A03, the system slider moves linearly with this value (measured: 64 → 59 of 250, 128 → 123, 255 → 250).
+  - Room light: a `Sensor.TYPE_LIGHT` listener (`SENSOR_DELAY_NORMAL`, non-wake-up). It's registered only while Eyes is on, and unregistered when the service stops. The A03 has `light_tmd2712`.
+- **Rule (`EyesRuleEngine`), ticked by the service right after Ears:**
+  - A bright-in-dim stretch is timed while Eyes is on, the screen is usable (on and unlocked), brightness ≥ `eyesBrightnessPercent` (70) and lux < `eyesDimLux` (20).
+  - A brighter room or lower brightness resets it after a 5-second grace (`BREAK_GRACE_MS`). A locked or dark screen, or Eyes switched off, resets it at once.
+  - The card is due at `eyesMinutes` (10), or 1 minute in Demo mode. It's always `CAUTION`; the message switches to "a dark room late at night" between 22:00 and 06:00.
+  - **Gates:**
+    - the same 10-minute cooldown (rule `BRIGHT_IN_DIM`, seeded from Room after `capResetAt`), snooze and screen gates as Ears;
+    - `blocked` when the shared cap of 3 is reached (`EarsRuleEngine.cardsToday`), when Ears fired this tick, or while a card is on screen (`WarningCardOverlay.isShowing`).
+  - When an Eyes card fires, the service calls `engine.countOtherCard()`, so Ears sees the shared cap.
+- **Card:** both `Warning` (Ears) and `EyesWarning` implement `CardWarning` (severity, message, demoMode), which is all `WarningCard` needs.
+- **Records:** the warning goes into `events` with `signal = EYES`, `rule = BRIGHT_IN_DIM`, `brightnessPercent`, `lux` and `durationMs`. `EYES_TIMER_STARTED` and `EYES_TIMER_RESET` (with the reason) go to the System Log.
+- **Unit tests** (`EyesRuleEngineTest`, 12): 10-minute firing, no timer in a lit room, at low brightness or without a sensor, flicker grace vs. reset, screen off, switched off, Demo mode, cooldown then reminder, blocked and snoozed, seeded cooldown, Demo reset, late-night wording, and Ears counting Eyes cards toward the shared cap.
+- **Docs:** https://developer.android.com/reference/android/hardware/SensorManager · https://developer.android.com/reference/android/provider/Settings.System
+
+PRD ref: `prd.md > Eyes: Bright Screen in a Dim Room`.
+
 ### Live Status
 File: `monitor/LiveStatus.kt`. One in-memory `StateFlow<Live>` that the service writes and the screens read. The service and the screens run in the same process.
 
@@ -433,7 +454,7 @@ File: `monitor/BootReceiver.kt`. Exported. It filters `BOOT_COMPLETED` and `MY_P
 Resolves `prd.md > Open Questions` #2: monitoring resumes automatically after a phone restart (learner's decision).
 
 ### Room Database
-Files: `data/Entities.kt`, `data/Daos.kt`, `data/AppDatabase.kt`. Tables are in **Data Model**. Version 1 with `exportSchema = false`, a proof-of-concept choice with no migrations.
+Files: `data/Entities.kt`, `data/Daos.kt`, `data/AppDatabase.kt`. Tables are in **Data Model**. Version 2 with `exportSchema = false`. `MIGRATION_1_2` adds the Eyes columns to `events` with `ALTER TABLE`, so existing history is kept and old rows become `EARS`.
 
 - **`ReadingDao`**
   - `insert`
@@ -467,6 +488,10 @@ File: `data/SettingsStore.kt`. A Preferences DataStore exposes `Flow<Settings>` 
 | --- | --- | --- |
 | `onboardingDone` | `false` | |
 | `monitoringEnabled` | `false` | Ears on = monitoring on in this build |
+| `eyesEnabled` | `false` | Eyes, inside the same service |
+| `eyesBrightnessPercent` | `70` | 50–100, steps of 5 |
+| `eyesDimLux` | `20` | 5–100, steps of 5 |
+| `eyesMinutes` | `10` | 5–60 |
 | `thresholdPercent` | `80` | 50–95, steps of 5. The 95 cap keeps "very high" inside a loud stretch. |
 | `continuousMinutes` | `15` | 5–60 |
 | `dailyMinutes` | `60` | 15–240 |
@@ -479,7 +504,7 @@ File: `data/SettingsStore.kt`. A Preferences DataStore exposes `Flow<Settings>` 
 - sets `capResetAt = now`;
 - clears `snoozeUntil`.
 
-The service sees `capResetAt` change and calls `engine.resetCooldownsAndCap()`.
+The service sees `capResetAt` change and calls `engine.resetCooldownsAndCap()` and `eyesEngine.resetCooldown()`.
 
 Docs: https://developer.android.com/topic/libraries/architecture/datastore
 
@@ -507,7 +532,7 @@ File: `ui/dashboard/DashboardScreen.kt`. It reads `LiveStatus`, `SettingsStore` 
   - `▲ HIGH VOLUME: 03:12 / 15:00`, a timer running toward the rule (`/ 01:00` in Demo mode);
   - `■ VERY HIGH: 01:40 / 05:00`.
 
-**4. Coming later:** small dim `EYES · COMING LATER` and `DEVICE · COMING LATER` cards.
+**4. Eyes card:** `BRIGHTNESS 85%` with `AUTO`/`MANUAL`, a bar with the threshold mark, `ROOM LIGHT: 6 LUX · DIM (UNDER 20)` or `· LIT` (or `NO SENSOR`), then `● STATUS: NORMAL` or `▲ BRIGHT IN DIM ROOM: 00:42 / 10:00`. While Eyes is off: a compact `EYES · OFF` row with `[ TURN ON ]`. Below it, a small dim `DEVICE · COMING LATER` card.
 
 **5. Patterns** (see Patterns).
 
@@ -685,12 +710,15 @@ Everything lives on the phone, in the app's private storage. There's no account,
 | `time` | Long | |
 | `kind` | String | See System Log |
 | `message` | String | |
-| `rule` | String? | `CONTINUOUS`, `VERY_HIGH`, or `DAILY` |
+| `rule` | String? | `CONTINUOUS`, `VERY_HIGH`, `DAILY`, or `BRIGHT_IN_DIM` (Eyes) |
 | `severity` | String? | |
 | `volumePercent` | Int? | |
 | `durationMs` | Long? | |
 | `outputType` | String? | |
 | `demoMode` | Boolean | |
+| `signal` | String | `EARS` (default) or `EYES`. Added in v2. |
+| `brightnessPercent` | Int? | Eyes warnings. Added in v2. |
+| `lux` | Int? | Eyes warnings. Added in v2. |
 
 - Only ever inserted.
 - Read by History (`kind = WARNING`), the System Log, Insight (by `id`), Patterns, and the engine seeding:
@@ -726,10 +754,13 @@ Smart-Senses/
 │       │   │   ├── rules/                     # PLAIN KOTLIN, no android.* (future KMP shared module)
 │       │   │   │   ├── EarsModels.kt          # AudioSample, EarsConfig, Gates, Warning, Rule, Severity, TickResult
 │       │   │   │   ├── EarsRuleEngine.kt      # timers, red/amber/daily rules, cooldown, cap, snooze
+│       │   │   │   ├── EyesModels.kt          # EyesSample, EyesConfig, EyesWarning (added during the build)
+│       │   │   │   ├── EyesRuleEngine.kt      # bright-in-dim timer, grace, cooldown, shared cap
 │       │   │   │   └── Patterns.kt            # today summary + 4-day upward-trend rule
 │       │   │   ├── monitor/                   # the background part
 │       │   │   │   ├── MonitoringService.kt   # foreground service: 1 s loop, Room writes, overlay calls
 │       │   │   │   ├── AudioReader.kt         # headphones? volume %? playing?
+│       │   │   │   ├── EyesReader.kt          # brightness setting + light sensor (lux)
 │       │   │   │   ├── LiveStatus.kt          # in-memory StateFlow for the dashboard
 │       │   │   │   ├── MonitoringNotification.kt # channel + ongoing notification
 │       │   │   │   └── BootReceiver.kt        # resume after reboot / app update
@@ -739,7 +770,7 @@ Smart-Senses/
 │       │   │   ├── data/
 │       │   │   │   ├── Entities.kt            # Reading, ListeningSession, Event
 │       │   │   │   ├── Daos.kt                # ReadingDao, SessionDao, EventDao
-│       │   │   │   ├── AppDatabase.kt         # Room database v1
+│       │   │   │   ├── AppDatabase.kt         # Room database v2 + MIGRATION_1_2
 │       │   │   │   └── SettingsStore.kt       # DataStore keys, defaults, setters
 │       │   │   ├── permissions/
 │       │   │   │   └── Permissions.kt         # status checks + Settings intents (FIX links)
@@ -759,6 +790,7 @@ Smart-Senses/
 │       │       └── values/                # strings, colors, themes (black window)
 │       └── test/java/com/lanceky/smartsenses/rules/
 │           ├── EarsRuleEngineTest.kt      # JVM tests for every rule transition
+│           ├── EyesRuleEngineTest.kt      # JVM tests for the Eyes rule
 │           └── PatternsTest.kt
 ├── gradle/
 │   ├── libs.versions.toml          # all versions from Stack in one place
@@ -836,7 +868,7 @@ The `agent/` folder is the skill pack's copy for another agent, so it's committe
 - **Media volume % as the exposure proxy** instead of measured decibels: Android doesn't expose what reaches the ear. The UI says so.
 - **Bluetooth counts as headphones** (PRD assumption): Android can't reliably tell headphones from a Bluetooth speaker.
 - **A documented battery setting** instead of an in-app exemption request: the honest `STOPPED` status covers the gap.
-- **Ears only:** Eyes and Device are placeholders, as `prd.md > Deferred From the POC` says.
+- **Ears first, Eyes minimal:** Eyes was added during the build with one rule, no red level, no Trends chart and no patterns. Device is still a placeholder (`prd.md > Deferred From the POC`).
 - **Never faked:** Demo mode shortens one real timer. No sample data exists anywhere; empty states say "Not enough data yet."
 
 ## Decisions and Open Issues

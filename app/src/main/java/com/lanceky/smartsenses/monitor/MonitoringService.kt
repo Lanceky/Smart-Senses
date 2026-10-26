@@ -18,10 +18,14 @@ import com.lanceky.smartsenses.data.EventKind
 import com.lanceky.smartsenses.data.ListeningSession
 import com.lanceky.smartsenses.data.Reading
 import com.lanceky.smartsenses.data.Settings
+import com.lanceky.smartsenses.data.Signal
 import com.lanceky.smartsenses.overlay.WarningCardOverlay
 import com.lanceky.smartsenses.rules.AudioSample
 import com.lanceky.smartsenses.rules.EarsConfig
 import com.lanceky.smartsenses.rules.EarsRuleEngine
+import com.lanceky.smartsenses.rules.EyesConfig
+import com.lanceky.smartsenses.rules.EyesRuleEngine
+import com.lanceky.smartsenses.rules.EyesWarning
 import com.lanceky.smartsenses.rules.Gates
 import com.lanceky.smartsenses.rules.Output
 import com.lanceky.smartsenses.rules.Rule
@@ -34,12 +38,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 
 /** The foreground service that keeps watching headphone volume while other apps are open. */
 class MonitoringService : LifecycleService() {
     private val app get() = application as SmartSensesApp
     private val engine = EarsRuleEngine()
+    private val eyesEngine = EyesRuleEngine()
+    private var eyesReader: EyesReader? = null
     private var loop: Job? = null
     private var settings = Settings()
 
@@ -87,13 +94,17 @@ class MonitoringService : LifecycleService() {
             app.settingsStore.settings.collect { s ->
                 settings = s
                 // Demo mode was switched on: earlier cards must not block the next one.
-                if (s.capResetAt != lastCapReset) engine.resetCooldownsAndCap()
+                if (s.capResetAt != lastCapReset) {
+                    engine.resetCooldownsAndCap()
+                    eyesEngine.resetCooldown()
+                }
                 lastCapReset = s.capResetAt
                 if (!s.monitoringEnabled) stopSelf()
             }
         }
 
         val reader = AudioReader(this)
+        val eyesReader = EyesReader(this).also { this.eyesReader = it }
         val power = getSystemService(PowerManager::class.java)
         val keyguard = getSystemService(KeyguardManager::class.java)
         var lastOutput: Output? = null
@@ -138,6 +149,34 @@ class MonitoringService : LifecycleService() {
             }
             result.warning?.let { onWarning(it, sample) }
 
+            // Eyes: same tick, same snooze and screen gates; the 3-a-day cap is shared, and it never replaces a card on screen.
+            val eyesConfig = settings.toEyesConfig()
+            eyesReader.setListening(eyesConfig.enabled)
+            val eyesSample = eyesReader.read()
+            val blocked = engine.cardsToday >= EarsConfig.DAILY_CAP || result.warning != null || WarningCardOverlay.isShowing
+            val hour = LocalTime.now().hour
+            val eyes = eyesEngine.onTick(
+                SystemClock.elapsedRealtime(), now, eyesSample, eyesConfig, gates, blocked, lateNight = hour >= 22 || hour < 6,
+            )
+            val b = eyesSample.brightnessPercent
+            val lux = eyesSample.lux?.toInt()
+            if (eyes.started) {
+                log(EventKind.EYES_TIMER_STARTED, "screen $b% in dim light ($lux lux): eyes timer started", signal = Signal.EYES)
+            }
+            if (eyes.reset) {
+                val why = when {
+                    !eyesConfig.enabled -> "eyes switched off"
+                    !gates.screenUsable -> "screen off"
+                    b < eyesConfig.brightnessPercent -> "brightness lowered to $b%"
+                    else -> "room brighter ($lux lux)"
+                }
+                log(EventKind.EYES_TIMER_RESET, "eyes timer reset: $why", signal = Signal.EYES)
+            }
+            eyes.warning?.let {
+                engine.countOtherCard()
+                onEyesWarning(it)
+            }
+
             LiveStatus.update {
                 it.copy(
                     running = true,
@@ -148,6 +187,12 @@ class MonitoringService : LifecycleService() {
                     veryHighMs = result.veryHighMs,
                     todayHighMs = result.todayHighMs,
                     sessionListeningMs = (session?.listeningMs ?: 0) + pendPlayingMs,
+                    brightnessPercent = b,
+                    autoBrightness = eyesSample.autoBrightness,
+                    lightSensor = eyesReader.hasLightSensor,
+                    lux = eyesSample.lux,
+                    brightInDimMs = eyes.brightInDimMs,
+                    eyesTiming = eyesEngine.timing,
                     status = when {
                         !sample.headphones -> EarsStatus.NORMAL
                         v >= EarsConfig.VERY_HIGH_PERCENT -> EarsStatus.VERY_HIGH
@@ -175,6 +220,7 @@ class MonitoringService : LifecycleService() {
             lastFired = lastFired,
             dailyFiredToday = events.lastWarningTime(Rule.DAILY.name, startOfDay) != null,
         )
+        eyesEngine.seed(events.lastWarningTime(EyesConfig.RULE, settings.capResetAt))
     }
 
     /** Saves the last 10 s of listening as a reading and adds it to the session. Paused time never makes a row. */
@@ -252,7 +298,31 @@ class MonitoringService : LifecycleService() {
         WarningCardOverlay.show(this, warning, id)
     }
 
-    private suspend fun log(kind: String, message: String, volumePercent: Int? = null, outputType: String? = null) {
+    private suspend fun onEyesWarning(warning: EyesWarning) {
+        val id = app.db.events().insert(
+            Event(
+                time = System.currentTimeMillis(),
+                kind = EventKind.WARNING,
+                message = warning.message,
+                rule = EyesConfig.RULE,
+                severity = warning.severity.name,
+                durationMs = warning.durationMs,
+                demoMode = warning.demoMode,
+                signal = Signal.EYES,
+                brightnessPercent = warning.brightnessPercent,
+                lux = warning.lux,
+            )
+        )
+        WarningCardOverlay.show(this, warning, id)
+    }
+
+    private suspend fun log(
+        kind: String,
+        message: String,
+        volumePercent: Int? = null,
+        outputType: String? = null,
+        signal: String = Signal.EARS,
+    ) {
         app.db.events().insert(
             Event(
                 time = System.currentTimeMillis(),
@@ -261,11 +331,13 @@ class MonitoringService : LifecycleService() {
                 volumePercent = volumePercent,
                 outputType = outputType,
                 demoMode = settings.demoMode,
+                signal = signal,
             )
         )
     }
 
     override fun onDestroy() {
+        eyesReader?.setListening(false)
         WarningCardOverlay.remove(this)
         LiveStatus.update { Live(running = false) }
         val demo = settings.demoMode
@@ -312,5 +384,13 @@ fun Settings.toConfig() = EarsConfig(
     thresholdPercent = thresholdPercent,
     continuousMinutes = continuousMinutes,
     dailyMinutes = dailyMinutes,
+    demoMode = demoMode,
+)
+
+fun Settings.toEyesConfig() = EyesConfig(
+    enabled = eyesEnabled,
+    brightnessPercent = eyesBrightnessPercent,
+    dimLux = eyesDimLux,
+    minutes = eyesMinutes,
     demoMode = demoMode,
 )

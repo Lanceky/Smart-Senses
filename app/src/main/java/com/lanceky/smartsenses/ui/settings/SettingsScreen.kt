@@ -59,13 +59,16 @@ fun SettingsScreen(settings: Settings) {
         CapsLabel("SETTINGS", color = Neon, size = 15.sp, bold = true)
 
         ConsolePanel("MONITORING") {
-            ToggleRow("Ears monitoring", settings.monitoringEnabled) { on ->
+            ToggleRow("Monitoring", settings.monitoringEnabled) { on ->
                 scope.launch {
                     store.setMonitoringEnabled(on)
                     if (on) MonitoringService.start(context, MonitoringService.REASON_USER) else MonitoringService.stop(context)
                 }
             }
-            ConsoleText("Watches headphone volume in the background, even while other apps are open.", color = TextDim, size = 12.sp)
+            ConsoleText(
+                "Watches headphone volume, and screen brightness when Eyes is on, in the background, even while other apps are open.",
+                color = TextDim, size = 12.sp,
+            )
         }
 
         ConsolePanel("EARS / WARNING THRESHOLDS") {
@@ -88,6 +91,27 @@ fun SettingsScreen(settings: Settings) {
             )
         }
 
+        ConsolePanel("EYES / BRIGHT SCREEN IN A DIM ROOM") {
+            ToggleRow("Eyes", settings.eyesEnabled) { on -> scope.launch { store.setEyesEnabled(on) } }
+            Stepper("Bright screen at", "${settings.eyesBrightnessPercent}%",
+                onMinus = { scope.launch { store.setEyesBrightnessPercent(settings.eyesBrightnessPercent - 5) } },
+                onPlus = { scope.launch { store.setEyesBrightnessPercent(settings.eyesBrightnessPercent + 5) } })
+            Stepper("Dim room under", "${settings.eyesDimLux} lux",
+                onMinus = { scope.launch { store.setEyesDimLux(settings.eyesDimLux - 5) } },
+                onPlus = { scope.launch { store.setEyesDimLux(settings.eyesDimLux + 5) } })
+            Stepper("Warning after", "${settings.eyesMinutes} min",
+                onMinus = { scope.launch { store.setEyesMinutes(settings.eyesMinutes - 5) } },
+                onPlus = { scope.launch { store.setEyesMinutes(settings.eyesMinutes + 5) } })
+            FixedRow("Demo duration", "${EarsConfig.DEMO_CONTINUOUS_MINUTES} min")
+            Spacer(Modifier.height(6.dp))
+            ConsoleText(
+                "Times a bright screen while the room is dim and the phone is unlocked. Brightness is your phone's brightness " +
+                    "setting; room light comes from its light sensor. Same cooldown and snooze as Ears, and the " +
+                    "${EarsConfig.DAILY_CAP}-cards-a-day limit is shared. Not medical advice.",
+                color = TextDim, size = 12.sp,
+            )
+        }
+
         ConsolePanel("DEMO MODE", accent = Amber) {
             ToggleRow("Demo mode", settings.demoMode, accent = Amber) { on ->
                 scope.launch {
@@ -97,7 +121,7 @@ fun SettingsScreen(settings: Settings) {
                             Event(
                                 time = System.currentTimeMillis(),
                                 kind = EventKind.DEMO_MODE_ON,
-                                message = "demo mode on: continuous warning after 1 min; cooldowns and today's card count reset",
+                                message = "demo mode on: warnings after 1 min; cooldowns and today's card count reset",
                                 demoMode = true,
                             )
                         )
@@ -105,8 +129,8 @@ fun SettingsScreen(settings: Settings) {
                 }
             }
             ConsoleText(
-                "Shortens only the continuous warning to 1 minute, so you can see a real warning quickly. " +
-                    "Headphones and the threshold still apply. Turning it on resets cooldowns and today's card count. Nothing is wiped.",
+                "Shortens the Ears continuous warning and the Eyes timer to 1 minute, so you can see a real warning quickly. " +
+                    "Headphones, thresholds and room light still apply. Turning it on resets cooldowns and today's card count. Nothing is wiped.",
                 color = TextDim, size = 12.sp,
             )
         }

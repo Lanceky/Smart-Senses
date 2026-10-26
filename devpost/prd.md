@@ -12,7 +12,7 @@ Source: `scope.md > The Unique Kernel`, `scope.md > Who It's For`, `scope.md > T
 Source: `scope.md > The Core Loop`, `scope.md > What "Working" Looks Like`.
 
 1. **First open:** a black Welcome screen shows the logo and "Your device. Your habits. Your senses. Stay aware before small habits become big problems." The user taps **Get started**.
-2. **Choose what to monitor:** Ears, Eyes, and Device cards, each with one sentence. Ears is the feature for this version. Eyes and Device show as "coming later."
+2. **Choose what to monitor:** Ears, Eyes, and Device cards, each with one sentence. Ears is the feature for this version and is on by default. Eyes is an optional switch, off by default (added during the build). Device shows as "coming later."
 3. **Permissions:** each permission is explained right before it's requested. Notifications support background monitoring. Appear on top ("Display over other apps") lets the card show over other apps. Each step offers **Continue to settings** and **Skip for now**. Readings stay on the device.
 4. **Confirm setup:** a checklist shows which features are on, which permissions are missing, and whether monitoring is running. Monitoring starts, and the live dashboard opens with real readings.
 5. The user leaves Smart-Senses and listens to music through headphones. The volume rises to 80% or more.
@@ -32,12 +32,12 @@ Source: `scope.md > The Core Loop`, `scope.md > What "Working" Looks Like`.
 - **Dashboard**, top to bottom:
   1. **Top bar:** logo, app name, and monitoring status (`MONITORING: ACTIVE` / `MONITORING: OFF`), plus a `DEMO MODE` label while Demo mode is on.
   2. **Ears card**, the most prominent element: headphone connection, media volume %, listening duration, and warning status (e.g., `STATUS: NORMAL`, or the high-volume timer running).
-  3. **Eyes and Device cards**, smaller: "coming later" in this build.
+  3. **Eyes card:** screen brightness % (auto or manual), room light in lux (DIM or LIT), and the bright-in-dim timer. While Eyes is off, it's a compact `EYES · OFF` row with **Turn on**. The **Device card** stays small: "coming later."
   4. **Patterns:** short, plain-language observations from recorded listening (scope: "shown on the dashboard").
   5. **System log:** a small terminal-style feed of meaningful events, such as monitoring started or a warning triggered.
 - **Trends:** one Ears chart (see `Trends`).
 - **History:** the event list (see `History`).
-- **Settings:** Ears → Warning thresholds, Demo mode, and the monitoring on/off control.
+- **Settings:** Ears → Warning thresholds, Eyes → Bright screen in a dim room, Demo mode, and the monitoring on/off control.
 - **Insight:** opened by tapping a warning card. It shows why the warning fired and offers **Snooze 1 hour**.
 - **Warning card:** floats over other apps (see `The Warning Card`).
 
@@ -56,7 +56,7 @@ Source: `scope.md > The Core Loop`, `scope.md > What "Working" Looks Like`.
 Source: `scope.md > The POC Boundary` ("permission onboarding").
 No permission dumping, privacy first, no dead ends.
 - [ ] On first launch, the Welcome screen appears; **Get started** moves to Choose what to monitor.
-- [ ] Ears can be enabled. Eyes and Device are visible, marked "coming later," and can't be switched on.
+- [ ] Ears can be enabled. Eyes can be switched on too; it's off by default and runs with monitoring, so it needs Ears on. Device is visible, marked "coming later," and can't be switched on.
 - [ ] Each permission has its own explainer that appears just before the request and says why it matters.
 - [ ] For Appear on top, **Continue to settings** opens Smart-Senses' "Appear on top" page in system Settings. On return, the app shows whether it was granted.
 - [ ] **Skip for now** always moves on. The app still opens, and it clearly says which features are unavailable and how to turn them on.
@@ -104,8 +104,9 @@ Source: `scope.md > Later` (tap to see why), brought into this build by the lear
 
 ### History
 Source: `scope.md > The POC Boundary` ("shown in a simple history").
-Each row shows **Time · Signal (EARS) · Reading (volume %) · Duration/context (how long it lasted, plus the headphone connection) · Severity (green/amber/red)**.
+Each row shows **Time · Signal (EARS or EYES) · Reading (volume % or brightness %) · Duration/context (how long it lasted, plus the headphone connection or the room light) · Severity (green/amber/red)**.
 - [ ] Every warning appears as a row with time, volume %, listening duration, output type, and severity.
+- [ ] Every Eyes warning appears as an `EYES` row with the brightness %, room light in lux, how long it lasted, and amber severity.
 - [ ] Listening sessions (from headphones connected to disconnected) appear as green rows unless a warning occurred.
 - [ ] Rows are newest first and remain after the app or phone restarts.
 - [ ] With no events yet, History says so in the console style instead of showing an empty screen.
@@ -125,10 +126,21 @@ Source: `scope.md > Later` (full charts stay later); this one minimal chart was 
 - [ ] **Day** and **Week** filters change the time window.
 - [ ] With too few readings, the chart area shows "Not enough data yet."
 
+### Eyes: Bright Screen in a Dim Room
+Source: added during the build at your request, once the Ears flow worked outside the app (`scope.md > The POC Boundary`). It reuses the Ears foundation.
+- [ ] Eyes reads the screen brightness setting and the room light from the phone's light sensor. Neither needs a permission.
+- [ ] A timer runs while the phone is unlocked with the screen on, brightness is at or above 70%, and the room is under 20 lux. It shows on the dashboard as `▲ BRIGHT IN DIM ROOM mm:ss / 10:00`.
+- [ ] After 10 minutes (**1 minute in Demo mode**), an amber card drops over the current app: "EYES: Bright screen in a dim room for 10 min. Consider lowering brightness." Between 22:00 and 06:00 it says "a dark room late at night."
+- [ ] Lowering the brightness or a brighter room resets the timer after a 5-second grace, so a passing shadow doesn't restart the count. Locking the phone or switching the screen off resets it at once. Each reset is logged with its reason.
+- [ ] Eyes uses the same 10-minute cooldown, snooze and screen gates as Ears. The 3-cards-a-day cap is shared. It never replaces a card already on screen.
+- [ ] Eyes cards are always amber. There's no red level: it's a nudge, not a health claim.
+- [ ] Without a light sensor, the card says Eyes can't tell a dim room and never warns.
+
 ### Settings and Demo Mode
 Source: `scope.md > Open for the PRD` ("how the demo triggers a real warning within a minute").
 - [ ] **Settings → Ears → Warning thresholds** has: high-volume threshold (80%), continuous warning (15 min), and daily cumulative warning (60 min).
 - [ ] **Demo mode** is clearly labeled. While it's on, the continuous warning fires after 1 minute instead of 15. The headphone requirement and the 80% threshold stay the same, so the demo uses the real monitoring path. Turning it off returns to normal settings.
+- [ ] **Settings → Eyes** has the Eyes switch, the brightness threshold (70%), the dim-room light level (20 lux), and the warning time (10 min). Demo mode shortens the Eyes timer to 1 minute too.
 - [ ] Turning Demo mode on resets the cooldowns and today's card count, so earlier test runs never block a card during the recording.
 - [ ] Everything recorded in Demo mode is added to History like any other data. Nothing is wiped.
 - [ ] Monitoring can be turned on and off.
@@ -149,7 +161,7 @@ Source: `scope.md > Open for the PRD` ("how the demo triggers a real warning wit
 - **High volume = ≥ 80% of the device's media-volume range, headphone outputs only.** It's a proxy for exposure, not decibels, because headphones differ in loudness.
 - **Amber after 15 continuous minutes; daily amber at about 60 minutes; red at ≥ 95% for 5 minutes.** These are product rules, not clinical thresholds.
 - **Thresholds are configurable** under Settings → Ears → Warning thresholds.
-- **Demo mode shortens only the continuous timer to 1 minute**, so the demo still exercises real monitoring.
+- **Demo mode shortens only the Ears continuous timer and the Eyes timer to 1 minute**, so the demo still exercises real monitoring.
 - **Turning Demo mode on resets the cooldowns and the daily card count; demo data is added to History, never wiped.** This way, test runs can't block the recorded demo.
 - **Paused music doesn't count.** Only time with audio actually playing through headphones counts as listening.
 - **The card shows for about 5 seconds; swipe up to dismiss; tap to open its insight.** Snooze lives in the insight, so the floating card stays uncluttered.
@@ -157,7 +169,7 @@ Source: `scope.md > Open for the PRD` ("how the demo triggers a real warning wit
 - **Lowering the volume cancels the continuous timer but keeps the exposure** in today's total.
 - **Green means normal; amber and red carry warnings; color is never used alone.**
 - **Onboarding has no permission dumping, is privacy first, and has no dead ends.** Skipped permissions never block the app.
-- **The dashboard is Ears-first.** Eyes and Device stay as placeholders until they're built.
+- **The dashboard is Ears-first.** Eyes sits under it, and Device stays a placeholder until it's built.
 - **Patterns are rule-based comparisons with no medical claims.**
 - **Trends starts minimal:** one Ears chart, with day/week filters and an empty state.
 - **Assumptions to confirm:**
@@ -186,9 +198,10 @@ Order follows your scope priority: "make the first milestone a complete, working
    - Patterns
    - Trends
    - The circuit-eye logo as the launcher icon
+3. **Added during the build:** Eyes, a bright screen in a dim room (your request after the Ears flow worked).
 
 ## Deferred From the POC
-- **Eyes (brightness vs. room light)**, including the late-night dim-room pattern: its cards and History rows wait until Eyes is built (`scope.md > Later`).
+- **Eyes extras:** Eyes patterns over several days (such as a late-night habit) and an Eyes insight page (`scope.md > Later`). The Eyes card, rule and History rows are built.
 - **Device/Heat (temperature, thermal status)**, including the charging-heat pattern (`scope.md > Later`).
 - **Brightness and temperature charts in Trends**, which arrive with those signals.
 - **Data controls such as clearing history** (`scope.md > Later`).

@@ -168,7 +168,34 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   Does anything feel like a dead end?
   Commit: `First-time setup: welcome, choose Ears, permission explainers, checklist, logo`
 
-- [ ] **5. Tap the card to see why it fired, and snooze cards for an hour**
+- [x] **5. Eyes: a bright screen in a dim room gets its own amber card (added during the build)**
+  Becomes usable:
+  - **Dashboard Eyes card:** brightness % (auto or manual), room light in lux (`DIM` or `LIT`), and the bright-in-dim timer.
+  - **The card:** after 10 minutes (Demo mode: 1 minute) of a bright screen in a dim room, an amber `EYES` card drops over the current app.
+  - **Records:** the warning waits in History as an `EYES` row. The System Log shows when the timer starts and why it resets.
+  - **Settings → Eyes:** switch, brightness threshold, dim-room level, warning time. Setup gets an Eyes switch too.
+  Why now: your request once the Ears warning worked outside the app. It reuses the proven foundation (service, card, gates, History), and the next steps (Insight, Patterns) can account for both signals.
+  PRD ref: `prd.md > Eyes: Bright Screen in a Dim Room`, `prd.md > History`, `prd.md > Settings and Demo Mode`, `prd.md > Setup and Permissions`
+  Spec ref: Components: `Eyes Reader and Rule`, `Dashboard`, `Room Database`, `Settings Store (DataStore)`. Plus `spec.md > Data Model` (events, version 2).
+  Build:
+  - **Rules:** `rules/EyesModels.kt`, `rules/EyesRuleEngine.kt` and `EyesRuleEngineTest`, in plain Kotlin.
+  - **`EyesReader`:** the brightness setting and the light sensor.
+  - **Room version 2:** `signal`, `brightnessPercent` and `lux` on `events`, with `MIGRATION_1_2`.
+  - **Service:** ticks Eyes after Ears with the shared cap, snooze and cooldown; records and shows Eyes cards.
+  - **UI:** the dashboard Eyes card, the Settings Eyes section, the setup switch, History `EYES` rows, and System Log lines.
+  Verify (mechanical):
+  1. `./gradlew testDebugUnitTest assembleDebug`: the Ears and Eyes tests pass.
+  2. `adb install -r` over existing data: the database is version 2, and old events are kept as `EARS`.
+  3. With Eyes and Demo mode on, run `adb shell settings put system screen_brightness 255` in a dim room, then go Home. The card appears about 60 s later, and an `EYES` warning is in the pulled database.
+  4. Lower the brightness: the System Log shows `eyes timer reset: brightness lowered`.
+  5. History shows the `EYES` row. Then restore the brightness.
+  Learner check:
+  1. In a dim room, turn Eyes on (dashboard `[ TURN ON ]` or Settings) and Demo mode on.
+  2. Push the brightness slider to full and stay in another app for a minute. The amber `EYES` card should drop in.
+  3. Lower the brightness and check that the dashboard's System Log says why the timer reset.
+  Commit: `Eyes: warn about a bright screen in a dim room`
+
+- [ ] **6. Tap the card to see why it fired, and snooze cards for an hour**
   Becomes usable: tapping the card, or a History warning row, opens Insight. It shows:
   - severity, rule, volume %, how long, time, output, and a `DEMO` tag;
   - a plain "why";
@@ -194,7 +221,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   2. Tap `Snooze 1 hour`, then check the dashboard shows `SNOOZED UNTIL`.
   Commit: `Insight and snooze: tap a warning to see why it fired`
 
-- [ ] **6. Patterns and Trends from your own recorded listening**
+- [ ] **7. Patterns and Trends from your own recorded listening**
   Becomes usable:
   - **Patterns panel** on the dashboard:
     - today's summary, e.g. "Today: 3 high-volume stretches, 24 min at or above 80%";
@@ -223,7 +250,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
   3. Read the Patterns panel. Does it describe what you actually did today?
   Commit: `Patterns and Trends from recorded listening`
 
-- [ ] **7. Monitoring comes back on its own, and the repo explains the app**
+- [ ] **8. Monitoring comes back on its own, and the repo explains the app**
   Becomes usable:
   - **Resume:** after a phone restart or an app update, monitoring resumes by itself and logs `monitoring resumed`.
   - **README:** what Smart-Senses is, how to build and install it, demo prep, and the honest volume note.
@@ -255,7 +282,7 @@ Build mode: fast (chosen by the learner at the start of `5-build`)
 
 - [x] Early usable behavior explored: after slice 2. You try the card over a music app in Demo mode, while feedback can still change the card's look, wording, timing, and the remaining steps.
   - Done with real wired headphones: the card fired at 93% after 1 minute. Feedback: the card should drop vertically from the status bar with a buoyant bounce. Changed to a spring drop; a frame-by-frame screen recording confirmed the overshoot and bob.
-- [ ] Final kick-the-tires exploration and feedback completed: after slice 7, the full core journey from a fresh install.
+- [ ] Final kick-the-tires exploration and feedback completed: after slice 8, the full core journey from a fresh install.
 
 ## Final Review
 
@@ -281,4 +308,11 @@ Activity mode: [not started]
 - **Slice 2 mechanical verification without headphones.** None were connected, so steps 5–8 ran on a temporary build that reported wired headphones and playback (never committed). The card appeared 60 s after the timer started, auto-hid, dismissed on swipe up, and the `WARNING` and `volume back under threshold` lines were logged. Real headphones are covered by the learner check.
 - **Warning card motion** (learner feedback at the slice 2 checkpoint). The card used to slide and fade in. It now drops straight down from under the status bar on a bouncy spring: it overshoots about 20 dp, bobs back and settles in under a second. The exit is still a quick slide up. Updated `spec.md > Warning Card Overlay` and the `prd.md > The Warning Card` criterion.
 - **Slice 3 mechanical verification without playing audio.** A wired headset was plugged in but paused, so nothing was played into it. A temporary build (never committed) mapped volume steps to states: 0 meant unplugged, 7 meant plugged in and paused, anything else meant playing. Results: a paused-only session was deleted; a 78 s session matched its 9 readings exactly; a warning raised its session to CAUTION; History survived a force-stop. The real build then detected the wired headset correctly.
-- **Slice 4 verification, steps 2–3.** You walked through setup on the phone yourself and granted both permissions instead of denying notifications. The deny path (monitoring keeps running without notifications; a missing Appear on top shows `FIX`) was already covered by the dashboard notices verified in slice 2, and slice 7 spot-checks it again. After your walk-through, the Appear on top explainer gained one hint line saying what to look for in Android's list.
+- **Slice 4 verification, steps 2–3.** You walked through setup on the phone yourself and granted both permissions instead of denying notifications. The deny path (monitoring keeps running without notifications; a missing Appear on top shows `FIX`) was already covered by the dashboard notices verified in slice 2, and slice 8 (formerly 7) spot-checks it again. After your walk-through, the Appear on top explainer gained one hint line saying what to look for in Android's list.
+- **Eyes added during the build** (your request after slice 4). `scope.md` had Eyes under Later; it's now a minimal extra feature on the Ears foundation, inserted as slice 5, so the old slices 5–7 are now 6–8.
+  - **One amber rule:** brightness at or above 70% while the room is under 20 lux, for 10 minutes (1 in Demo mode).
+  - **Shared with Ears:** the same cooldown, snooze and 3-cards-a-day cap. History shows `EYES` rows, and Settings has an Eyes section.
+  - **Not included:** Trends charts, Eyes patterns, and an Eyes-specific insight. The Insight in slice 6 shows Eyes warnings with their own reading.
+  - **Measured on the A03:** the brightness slider moves linearly with the stored value, and the light sensor read 2–5 lux in your room.
+  - **Data kept:** `events` moved to Room version 2 with a migration, so your recorded history survived.
+  - **Docs updated:** `scope.md`, `prd.md` (new Eyes section) and `spec.md` (new `Eyes Reader and Rule` component, Data Model, Settings keys).

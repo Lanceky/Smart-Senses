@@ -35,11 +35,13 @@ import com.lanceky.smartsenses.SmartSensesApp
 import com.lanceky.smartsenses.data.Event
 import com.lanceky.smartsenses.data.EventKind
 import com.lanceky.smartsenses.data.Settings
+import com.lanceky.smartsenses.data.Signal
 import com.lanceky.smartsenses.monitor.EarsStatus
 import com.lanceky.smartsenses.monitor.Live
 import com.lanceky.smartsenses.monitor.LiveStatus
 import com.lanceky.smartsenses.monitor.MonitoringService
 import com.lanceky.smartsenses.monitor.toConfig
+import com.lanceky.smartsenses.monitor.toEyesConfig
 import com.lanceky.smartsenses.permissions.Permissions
 import com.lanceky.smartsenses.permissions.rememberPermissionStatus
 import com.lanceky.smartsenses.rules.EarsConfig
@@ -95,10 +97,8 @@ fun DashboardScreen(settings: Settings) {
             }
         }
         EarsCard(settings, live)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ComingLater("EYES", "screen brightness", Modifier.weight(1f))
-            ComingLater("DEVICE", "temperature", Modifier.weight(1f))
-        }
+        EyesCard(settings, live) { scope.launch { app.settingsStore.setEyesEnabled(true) } }
+        ComingLater("DEVICE", "temperature", Modifier.fillMaxWidth())
         SystemLog(events)
     }
 }
@@ -216,6 +216,58 @@ private fun EarsCard(settings: Settings, live: Live) {
 }
 
 @Composable
+private fun EyesCard(settings: Settings, live: Live, onTurnOn: () -> Unit) {
+    if (!settings.eyesEnabled) {
+        Row(
+            Modifier.fillMaxWidth().border(1.dp, Border.copy(alpha = 0.5f), RoundedCornerShape(4.dp)).padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                CapsLabel("EYES · OFF")
+                Spacer(Modifier.height(2.dp))
+                ConsoleText("bright screen in a dim room", color = TextDim.copy(alpha = 0.7f), size = 12.sp)
+            }
+            ConsoleButton("turn on", onTurnOn)
+        }
+        return
+    }
+    val running = settings.monitoringEnabled && live.running
+    val config = settings.toEyesConfig()
+    ConsolePanel(title = "EYES", accent = Neon, glow = Neon, trailing = { CapsLabel("screen brightness") }) {
+        if (!running) {
+            ConsoleText("> monitoring is off: no readings_", color = TextDim)
+            return@ConsolePanel
+        }
+        val bright = live.brightnessPercent >= config.brightnessPercent
+        val lux = live.lux
+        val dim = lux != null && lux < config.dimLux
+        val color = if (bright && dim) Amber else Neon
+        Row(verticalAlignment = Alignment.Bottom) {
+            CapsLabel("BRIGHTNESS", Modifier.padding(bottom = 8.dp))
+            Spacer(Modifier.width(10.dp))
+            Text("${live.brightnessPercent}%", color = color, fontSize = 34.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+            Spacer(Modifier.width(10.dp))
+            CapsLabel(if (live.autoBrightness) "AUTO" else "MANUAL", Modifier.padding(bottom = 8.dp))
+        }
+        VolumeBar(live.brightnessPercent, config.brightnessPercent, color)
+        ConsoleText("threshold ${config.brightnessPercent}%", color = TextDim, size = 11.sp)
+        Spacer(Modifier.height(6.dp))
+        when {
+            !live.lightSensor -> CapsLabel("ROOM LIGHT: NO SENSOR · Eyes can't tell a dim room", color = Amber)
+            lux == null -> CapsLabel("ROOM LIGHT: waiting for the light sensor")
+            dim -> CapsLabel("ROOM LIGHT: ${lux.toInt()} LUX · DIM (under ${config.dimLux})", color = Amber)
+            else -> CapsLabel("ROOM LIGHT: ${lux.toInt()} LUX · LIT", color = Neon)
+        }
+        Spacer(Modifier.height(8.dp))
+        if (live.eyesTiming) {
+            CapsLabel("▲ BRIGHT IN DIM ROOM: ${mmss(live.brightInDimMs)} / ${mmss(config.warnMs)}", color = Amber, bold = true)
+        } else {
+            CapsLabel("● STATUS: NORMAL", color = Neon, bold = true)
+        }
+    }
+}
+
+@Composable
 private fun ComingLater(title: String, what: String, modifier: Modifier = Modifier) {
     Column(modifier.border(1.dp, Border.copy(alpha = 0.5f), RoundedCornerShape(4.dp)).padding(10.dp)) {
         CapsLabel("$title · COMING LATER")
@@ -242,6 +294,7 @@ private fun SystemLog(events: List<Event>) {
 
 private fun warningLine(e: Event, severity: Severity): String {
     val minutes = (e.durationMs ?: 0) / MINUTE_MS
+    if (e.signal == Signal.EYES) return "WARNING ${severity.glyph()} EYES ${e.brightnessPercent}% in ${e.lux} lux for $minutes min"
     return if (e.rule == Rule.DAILY.name) "WARNING ${severity.glyph()} EARS $minutes min loud today"
     else "WARNING ${severity.glyph()} EARS ${e.volumePercent}% for $minutes min"
 }

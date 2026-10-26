@@ -41,7 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.lanceky.smartsenses.rules.Warning
+import com.lanceky.smartsenses.rules.CardWarning
 import com.lanceky.smartsenses.ui.components.color
 import com.lanceky.smartsenses.ui.components.glyph
 import com.lanceky.smartsenses.ui.components.label
@@ -63,7 +63,7 @@ private val OvershootRoom = 28.dp
 
 /** The floating card: drops from the status bar, stays about 5 s, slides back up. Swipe up to dismiss; tap for details. */
 @Composable
-fun WarningCard(warning: Warning, onTap: () -> Unit, onGone: () -> Unit) {
+fun WarningCard(warning: CardWarning, onTap: () -> Unit, onGone: () -> Unit) {
     val visible = remember { MutableTransitionState(false).apply { targetState = true } }
     var dragY by remember { mutableFloatStateOf(0f) }
     val dismissPx = with(LocalDensity.current) { 40.dp.toPx() }

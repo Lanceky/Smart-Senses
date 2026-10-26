@@ -1,5 +1,6 @@
 package com.lanceky.smartsenses.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -44,7 +45,15 @@ data class Event(
     val durationMs: Long? = null,
     val outputType: String? = null,
     val demoMode: Boolean = false,
+    @ColumnInfo(defaultValue = "EARS") val signal: String = Signal.EARS,
+    val brightnessPercent: Int? = null,
+    val lux: Int? = null,
 )
+
+object Signal {
+    const val EARS = "EARS"
+    const val EYES = "EYES"
+}
 
 object EventKind {
     const val MONITORING_STARTED = "MONITORING_STARTED"
@@ -57,4 +66,6 @@ object EventKind {
     const val WARNING = "WARNING"
     const val DEMO_MODE_ON = "DEMO_MODE_ON"
     const val SNOOZED = "SNOOZED"
+    const val EYES_TIMER_STARTED = "EYES_TIMER_STARTED"
+    const val EYES_TIMER_RESET = "EYES_TIMER_RESET"
 }

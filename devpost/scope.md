@@ -40,10 +40,11 @@ Ears only, end to end:
 - A basic Compose dashboard with current listening status.
 - Recording of listening usage on the device: when headphones connect and disconnect, volume over time, time spent at high volume, and each warning. It's shown in a simple history.
 - Pattern detection over that recorded data, such as volume creeping up during a session or long stretches at high volume, shown on the dashboard.
+- **Eyes, added during the build** at your request once the Ears flow worked outside the app: a bright screen in a dim room (screen brightness setting plus the phone's light sensor) gets its own amber card, History row and Settings section. It reuses the Ears foundation: the same service, card, gates and shared daily cap. Trends stay Ears-only.
 
 ## Later
 Once the ears flow works reliably outside the app, "reuse that foundation for brightness and temperature."
-- **Eyes — brightness vs. room light:** adds sensor handling and needs careful rules to avoid misleading warnings.
+- **Eyes extras:** brightness and room-light charts in Trends, Eyes patterns over several days, and an Eyes insight page.
 - **Device — temperature caution** (battery temperature, thermal status): "less central to the core hearing-and-vision use case."
 - Full trend charts and more advanced insights, such as tapping the card to see why it appeared.
 - Screen-time breaks, text-size suggestions, personalized recommendations.

@@ -13,7 +13,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.lanceky.smartsenses.MainActivity
 import com.lanceky.smartsenses.R
 import com.lanceky.smartsenses.permissions.Permissions
-import com.lanceky.smartsenses.rules.Warning
+import com.lanceky.smartsenses.rules.CardWarning
 import com.lanceky.smartsenses.ui.theme.SmartSensesTheme
 
 /** Draws the warning card in its own window over whatever app is open. One card at a time. */
@@ -22,7 +22,10 @@ object WarningCardOverlay {
     private var view: ComposeView? = null
     private var owner: OverlayOwner? = null
 
-    fun show(context: Context, warning: Warning, eventId: Long) {
+    /** A card is on screen right now; Eyes waits for it to leave instead of replacing it. */
+    val isShowing: Boolean get() = view != null
+
+    fun show(context: Context, warning: CardWarning, eventId: Long) {
         // Without Appear on top there's no card; the warning is already recorded.
         if (!Permissions.canDrawOverlays(context)) return
         remove(context)
